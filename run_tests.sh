@@ -63,6 +63,22 @@ runTest struct_test
 cd ..
 
 #####################################################################
+# 65c02
+#####################################################################
+
+changePlatform 65c02
+runTest linker_test
+cd ..
+
+#####################################################################
+# 65ce02
+#####################################################################
+
+changePlatform 65ce02
+runTest linker_test
+cd ..
+
+#####################################################################
 # 6510
 #####################################################################
 
@@ -87,20 +103,14 @@ runTest checksum_12mbit_lorom
 runTest checksum_24mbit_lorom
 runTest checksum_8mbit_hirom
 runTest checksum_8mbit_lorom
+runTest dlm_test
 runTest linker_test
 runTest macro_test
 runTest name_test
 runTest nocashsns_symbol_file
 runTest opcode_test
 runTest operand_hint_test
-cd ..
-
-#####################################################################
-# 65c02
-#####################################################################
-
-changePlatform 65c02
-runTest linker_test
+runTest wdc_test
 cd ..
 
 #####################################################################
@@ -149,6 +159,7 @@ runTest rept_test
 runTest sdsc_test
 runTest sms_test
 runTest smsheader_test
+runTest z81_test
 cd ..
 
 #####################################################################

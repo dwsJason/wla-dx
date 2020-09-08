@@ -14,8 +14,9 @@
 #define OBJ_EMPTY_FILL   4
 #define OBJ_MISC_BITS    5
 #define OBJ_MORE_BITS    6
-#define OBJ_ROMBANKS     7
-#define OBJ_ROMBANKMAP  11
+#define OBJ_EXTR_BITS    7
+#define OBJ_ROMBANKS     8
+#define OBJ_ROMBANKMAP  12
 
 #define LIB_FORMAT_INFO       0
 #define LIB_MISC_BITS         4
@@ -52,6 +53,7 @@
 #define STATE_FOOTER      4
 #define STATE_DEFINITION  5
 #define STATE_RAMSECTIONS 6
+#define STATE_SECTIONS    7
 
 #define SYMBOL_MODE_NONE   0
 #define SYMBOL_MODE_NOCA5H 1
@@ -81,6 +83,7 @@ struct object_file {
   int base_defined;
   int little_endian;
   int cpu_65816;
+  int cpu_65ce02;
   int id;
   int fix_slot;
   struct source_file_name *source_file_names_list;
@@ -144,6 +147,7 @@ struct section {
   int  address;
   int  output_address;
   int  status;
+  int  keep;
   int  bank;
   int  slot;
   int  size;
@@ -155,6 +159,7 @@ struct section {
   int  referenced;
   int  alive;
   int  alignment;
+  int  offset;
   int  listfile_items;
   int  *listfile_ints;
   char *listfile_cmds;
@@ -170,8 +175,17 @@ struct section_fix {
   char file_name[MAX_NAME_LENGTH + 1];
   char slot_name[MAX_NAME_LENGTH + 1];
   int  line_number;
+  int  keep;
   int  bank;
   int  slot;
+  int  orga;
+  int  org;
+  int  status;
+  int  alignment;
+  int  offset;
+  int  priority;
+  int  priority_defined;
+  int  is_ramsection;
   struct section_fix *next;
 };
 

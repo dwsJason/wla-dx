@@ -143,6 +143,31 @@ static void _debug_print_stack(int line_number, int stack_id, struct stack_item 
 #endif
 
 
+int get_label_length(char *l) {
+
+  int length;
+  
+  hashmap_get(defines_map, l, (void*)&tmp_def);
+
+  if (tmp_def != NULL) {
+    if (tmp_def->type == DEFINITION_TYPE_STRING)
+      return (int)strlen(tmp_def->string);
+    else {
+      snprintf(xyz, sizeof(xyz), "Definition \"%s\" is not a string definition. .length returns 0 for that...\n", l);
+      print_error(xyz, ERROR_NUM);
+      return 0;
+    }
+  }
+
+  length = (int)strlen(l);
+
+  if (l[0] == '"' && l[length-1] == '"')
+    length -= 2;
+
+  return length;
+}
+
+
 int stack_calculate(char *in, int *value) {
 
   int q = 0, b = 0, d, k, op[256], n, o, l;
@@ -611,30 +636,6 @@ int stack_calculate(char *in, int *value) {
   }
 #endif
 
-  /* calculate all X.length strings */
-  for (k = 0; k < q; k++) {
-    if (si[k].type == STACK_ITEM_TYPE_STRING) {
-      if (is_string_ending_with(si[k].string, ".length") > 0 ||
-	  is_string_ending_with(si[k].string, ".LENGTH") > 0) {
-	/* we have a X.length -> parse */
-	strcpy(label, si[k].string);
-	label[strlen(label) - 7] = 0;
-
-	hashmap_get(defines_map, label, (void*)&tmp_def);
-
-	if (tmp_def != NULL) {
-	  if (tmp_def->type == DEFINITION_TYPE_STRING) {
-	    memcpy(label, tmp_def->string, tmp_def->size);
-	    label[tmp_def->size] = 0;
-
-	    si[k].value = strlen(label);
-	    si[k].type = STACK_ITEM_TYPE_VALUE;
-	  }
-	}
-      }
-    }
-  }
-  
   /* check if the computation is of the form "+-..." and remove that leading "+" */
   if (q > 2 && si[0].type == STACK_ITEM_TYPE_OPERATOR && si[0].value == SI_OP_PLUS &&
       si[1].type == STACK_ITEM_TYPE_OPERATOR && si[1].value == SI_OP_MINUS) {
@@ -744,14 +745,14 @@ int stack_calculate(char *in, int *value) {
 	    d++;
 	  }
 	  b++;
-	  op[b] = si[k].value;
+	  op[b] = (int)si[k].value;
 	  b++;
 	}
 	else if (si[k].value == SI_OP_LOW_BYTE ||
 		 si[k].value == SI_OP_HIGH_BYTE ||
 		 si[k].value == SI_OP_BANK) {
 	  /* unary operator, priority over everything else */
-	  op[b] = si[k].value;
+	  op[b] = (int)si[k].value;
 	  b++;
 	}
 	else if (si[k].value == SI_OP_XOR ||
@@ -772,7 +773,7 @@ int stack_calculate(char *in, int *value) {
 	    d++;
 	  }
 	  b++;
-	  op[b] = si[k].value;
+	  op[b] = (int)si[k].value;
 	  b++;
 	}
 	else if (si[k].value == SI_OP_NOT) {
@@ -932,6 +933,15 @@ static int _resolve_string(struct stack_item *s, int *cannot_resolve) {
     }
   }
 
+  /* is this form "string".length? */
+  if (is_string_ending_with(s->string, ".length") > 0 ||
+      is_string_ending_with(s->string, ".LENGTH") > 0) {
+    /* we have a X.length -> parse */
+    s->string[strlen(s->string) - 7] = 0;
+    s->value = get_label_length(s->string);
+    s->type = STACK_ITEM_TYPE_VALUE;
+  }
+  
   return SUCCEEDED;
 }
 
@@ -985,9 +995,9 @@ int resolve_stack(struct stack_item s[], int x) {
 	      string_size = (int)strlen(ma->string);
 	    }
 	    else if (k == INPUT_NUMBER_STACK)
-	      latest_stack = ma->value;
+	      latest_stack = (int)ma->value;
 	    else if (k == SUCCEEDED) {
-	      d = ma->value;
+	      d = (int)ma->value;
 	      parsed_double = ma->value;
 	    }
 	  

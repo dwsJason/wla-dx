@@ -2,8 +2,11 @@ wla-dx
 ======
 
 WLA DX - Yet Another
-GB-Z80/Z80/6502/65C02/6510/65816/6800/6801/6809/8008/8080/HUC6280/SPC-700 
+GB-Z80/Z80/6502/65C02/65CE02/6510/65816/6800/6801/6809/8008/8080/HUC6280/SPC-700 
 Multi Platform Cross Assembler Package
+
+Linux: [![Build Status](https://dev.azure.com/villehelin0486/villehelin/_apis/build/status/vhelin.wla-dx%20Linux?branchName=master)](https://dev.azure.com/villehelin0486/villehelin/_build/latest?definitionId=1&branchName=master)
+Windows: [![Build Status](https://dev.azure.com/villehelin0486/villehelin/_apis/build/status/vhelin.wla-dx%20Windows?branchName=master)](https://dev.azure.com/villehelin0486/villehelin/_build/latest?definitionId=2&branchName=master)
 
 WLA DX is a set of tools to assemble assembly files to object or library files
 (`wla-ARCH`) and linking them together (`wlalink`). WLA DX isn't bound to one
@@ -16,6 +19,7 @@ Supported architectures are:
 * gb (z80-gb)
 * 6502
 * 65c02
+* 65ce02
 * 6510
 * 65816
 * 6800
@@ -34,7 +38,7 @@ Installing
 Compiling
 ---------
 
-See `INSTALL.md` for more detailed instructions.
+See `INSTALL` for more detailed instructions.
 
 You need:
 

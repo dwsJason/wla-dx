@@ -89,6 +89,7 @@
 /* j - rept start          */
 /* J - rept end            */
 /* v - special case ID     */
+/* t - namespace           */
 
 /**************************************************************/
 /* gb-z80                                                     */
@@ -149,6 +150,27 @@
 #define OP_SIZE_MAX 12
 #define ARCH_STR "WDC65C02"
 #define WLA_NAME "65c02"
+
+#endif
+
+/**************************************************************/
+/* 65CE02                                                     */
+/**************************************************************/
+
+#ifdef CSG65CE02
+
+/* opcode types */
+
+/* 0 - plain text  8b */
+/* 1 - x              */
+/* 2 - ?              */
+/* 3 - plain text 16b */
+/* 4 - x (absolute)   */
+/* 5 - x-abs x-rel    */
+
+#define OP_SIZE_MAX 12
+#define ARCH_STR "CSG65CE02"
+#define WLA_NAME "65ce02"
 
 #endif
 
@@ -390,7 +412,7 @@ struct optcode {
 #if defined(Z80) || defined(GB) || defined(I8008) || defined(I8080)
   unsigned char value;
 #endif
-#if defined(MCS6502) || defined(WDC65C02) || defined(HUC6280) || defined(MCS6510) || defined(MC6800) || defined(MC6801) || defined(MC6809)
+#if defined(MCS6502) || defined(WDC65C02) || defined(CSG65CE02) || defined(HUC6280) || defined(MCS6510) || defined(MC6800) || defined(MC6801) || defined(MC6809)
   unsigned char skip_8bit;
 #endif
 #if defined(W65816)
@@ -455,13 +477,14 @@ struct macro_incbin {
 #define MACRO_CALLER_NORMAL 0
 #define MACRO_CALLER_DBM    1
 #define MACRO_CALLER_DWM    2
-#define MACRO_CALLER_INCBIN 3
+#define MACRO_CALLER_DLM    3
+#define MACRO_CALLER_INCBIN 4
 
 struct macro_runtime {
   struct macro_static *macro;
-  int  macro_end;
-  int  macro_end_line;
-  int  macro_end_filename_id;
+  int  macro_return_i;
+  int  macro_return_line;
+  int  macro_return_filename_id;
   int  supplied_arguments;
   int  caller;
   char string[MAX_NAME_LENGTH + 1];
@@ -493,8 +516,10 @@ struct label_def {
 struct section_def {
   char name[MAX_NAME_LENGTH + 1];
   int  alignment;
+  int  offset;
   int  priority;
   int  address; /* in bank */
+  int  keep;
   int  bank;
   int  base;
   int  slot;
@@ -531,6 +556,7 @@ struct export_def {
 struct active_file_info {
   int    filename_id;
   int    line_current;
+  char   namespace[MAX_NAME_LENGTH + 1];
   struct active_file_info *next;
   struct active_file_info *prev;
 };
@@ -602,6 +628,7 @@ struct structure_item {
   /* only for TYPE_INSTANCE */
   struct structure *instance;
   int num_instances;
+  int start_from;
 
   /* only for TYPE_UNION; each union entry is stored as a structure. */
   struct structure *union_items;
