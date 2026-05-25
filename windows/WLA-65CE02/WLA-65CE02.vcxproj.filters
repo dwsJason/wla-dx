@@ -15,16 +15,13 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\GEN-TABLES-65CE02\opcodes_65ce02_tables.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\crc32.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\hashmap.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\include_file.c">
+    <ClCompile Include="..\..\include.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\listfile.c">
@@ -33,28 +30,37 @@
     <ClCompile Include="..\..\main.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\opcodes_65ce02.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\parse.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\pass_1.c">
+    <ClCompile Include="..\..\phase_1.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\pass_2.c">
+    <ClCompile Include="..\..\phase_2.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\pass_3.c">
+    <ClCompile Include="..\..\phase_3.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\pass_4.c">
+    <ClCompile Include="..\..\phase_4.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\printf.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\stack.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\mersenne.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\i65ce02.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\GEN-TABLES-65CE02\t65ce02.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\decode.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

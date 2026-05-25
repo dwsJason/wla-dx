@@ -1,8 +1,8 @@
 
 /*
- wlab - part of wla dx gb-z80/z80/6502/6510/65816 macro assembler package by
- ville helin <vhelin@cc.hut.fi>. this is gpl software.
- */
+  wlab - part of wla dx macro assembler package by
+  ville helin <ville.helin@iki.fi>. this is gpl software.
+*/
 
 #include <ctype.h>
 #include <stdio.h>
@@ -13,14 +13,12 @@
 #include "defines.h"
 
 
-
-#ifdef AMIGA
-char version_string[] = "$VER: WLAB 1.2 (31.03.2003)";
+#if defined(AMIGA)
+char version_string[] = "$VER: WLAB 1.3 (6.3.2026)";
 #endif
 
 
-int header = ON, mode = MOD_NONE, address = OFF, a, as, ae;
-
+int g_header = ON, g_mode = MODE_NONE, g_print_address = OFF, g_address_size, g_bytes_per_line = 8;
 
 
 int main(int argc, char *argv[]) {
@@ -28,28 +26,45 @@ int main(int argc, char *argv[]) {
   FILE *fp = NULL;
   unsigned char *in;
   char *name;
-  int i, fs, t;
+  int i, j, file_size, t, address = 0, result;
 
+  result = SUCCEEDED;
 
-  i = SUCCEEDED;
+  if (argc < 3)
+    result = FAILED;
 
-  if (!(argc == 2 || argc == 3))
-    i = FAILED;
+  for (i = 1; i < argc - 1 && result == SUCCEEDED; i++) {
+    if (strcmp(argv[i], "-n") == 0) {
+      i++;
+      if (i >= argc - 1) {
+        result = FAILED;
+        break;
+      }
+      {
+        int n = atoi(argv[i]);
+        if (n < 1) {
+          result = FAILED;
+          break;
+        }
+        g_bytes_per_line = n;
+      }
+    }
+    else {
+      result = parse_flags(argv[i]);
+    }
+  }
 
-  if (argc == 3)
-    i = parse_flags(argv[1]);
+  if (g_mode == MODE_NONE)
+    result = FAILED;
 
-  if (mode == MOD_NONE)
-    i = FAILED;
-
-  if (i == FAILED) {
-    fprintf(stderr, "\nWLAB Binary to WLA DB Converter v1.2\n");
-    fprintf(stderr, "Written by Ville Helin 2000-2003\n");
-    fprintf(stderr, "USAGE: %s -[ap]{bdh} <BIN FILE>\n", argv[0]);
+  if (result == FAILED) {
+    fprintf(stderr, "\nWLAB Binary to WLA DB Converter v1.3\n");
+    fprintf(stderr, "Written by Ville Helin 2000-2026\n");
+    fprintf(stderr, "USAGE: %s [-a] [-p] [-n <NUM>] {-b|-d|-h} <BIN FILE>\n", argv[0]);
     fprintf(stderr, "Commands:             Options:\n");
     fprintf(stderr, "b  Output binary      a  Print address\n");
     fprintf(stderr, "d  Output decimal     p  Skip header\n");
-    fprintf(stderr, "h  Output hex\n\n");
+    fprintf(stderr, "h  Output hex         n  Bytes per line (default: 8)\n\n");
     return 1;
   }
 
@@ -62,135 +77,178 @@ int main(int argc, char *argv[]) {
   }
 
   fseek(fp, 0, SEEK_END);
-  fs = ftell(fp);
+  file_size = ftell(fp);
   fseek(fp, 0, SEEK_SET);
 
-  in = calloc(sizeof(char) * fs, 1);
+  in = calloc(sizeof(char) * file_size, 1);
   if (in == NULL) {
-    fprintf(stderr, "MAIN: Out of memory. Could not allocate %d bytes.\n", fs);
+    fprintf(stderr, "MAIN: Out of memory. Could not allocate %d bytes.\n", file_size);
     fclose(fp);
     return 1;
   }
 
-  fread(in, 1, fs, fp);
+  if (fread(in, 1, file_size, fp) != (size_t) file_size) {
+    fprintf(stderr, "Could not read all %d bytes of \"%s\"!", file_size, name);
+    free(in);
+    fclose(fp);
+    return FAILED;
+  }
+
   fclose(fp);
 
-  if (fs < 0x10)
-    as = 1;
-  else if (fs < 0x100)
-    as = 2;
-  else if (fs < 0x1000)
-    as = 3;
+  if (file_size < 0x10)
+    g_address_size = 1;
+  else if (file_size < 0x100)
+    g_address_size = 2;
+  else if (file_size < 0x1000)
+    g_address_size = 3;
+  else if (file_size < 0x10000)
+    g_address_size = 4;
+  else if (file_size < 0x100000)
+    g_address_size = 5;
+  else if (file_size < 0x1000000)
+    g_address_size = 6;
+  else if (file_size < 0x10000000)
+    g_address_size = 7;
   else
-    as = 4;
+    g_address_size = 8;
 
   /* output header */
 
-  if (header == ON) {
+  if (g_header == ON) {
     fprintf(stdout, "; this file was created with wlab\n");
-    fprintf(stdout, "; by ville helin <vhelin@cc.hut.fi>.\n");
+    fprintf(stdout, "; by ville helin <ville.helin@iki.fi>.\n");
     fprintf(stdout, "; listing of file \"%s\".\n", name);
   }
 
-  a = 0;
+  address = 0;
 
   /* print data */
 
-  if (mode == MOD_HEX) {
+  if (g_mode == MODE_HEX) {
 
     /* output hexadecimal data */
 
-    t = fs >> 3;
-    fs = fs - (t << 3);
+    t = file_size / g_bytes_per_line;
+    file_size = file_size - t * g_bytes_per_line;
 
-    for (i = 0; t > 0; t--, i += 8) {
-      fprintf(stdout, ".DB $%.2x, $%.2x, $%.2x, $%.2x, $%.2x, $%.2x, $%.2x, $%.2x", in[i], in[i + 1], in[i + 2], in[i + 3], in[i + 4], in[i + 5], in[i + 6], in[i + 7]);
-      if (address == ON) {
-	ae = a + 8-1;
-	print_address();
-	a += 8;
-      }
-      else
-	fprintf(stdout, "\n");
-    }
-
-    if (fs != 0) {
+    for (i = 0; t > 0; t--, i += g_bytes_per_line) {
       fprintf(stdout, ".DB");
-      for (; fs > 0; fs--) {
-	fprintf(stdout, " $%.2x", in[i++]);
-	if (fs > 1)
-	  fprintf(stdout, ",");
+      for (j = 0; j < g_bytes_per_line; j++) {
+        if (j > 0)
+          fprintf(stdout, ",");
+        fprintf(stdout, " $%.2x", in[i + j]);
       }
-      if (address == ON) {
-	ae = i-1;
-	print_address();
+      if (g_print_address == ON) {
+        print_address(address, address + g_bytes_per_line-1);
+        address += g_bytes_per_line;
       }
       else
-	fprintf(stdout, "\n");
+        fprintf(stdout, "\n");
     }
 
+    if (file_size != 0) {
+      fprintf(stdout, ".DB");
+      for (; file_size > 0; file_size--) {
+        fprintf(stdout, " $%.2x", in[i++]);
+        if (file_size > 1)
+          fprintf(stdout, ",");
+      }
+      if (g_print_address == ON)
+        print_address(address, i-1);
+      else
+        fprintf(stdout, "\n");
+    }
   }
-  else if (mode == MOD_DEC) {
+  else if (g_mode == MODE_DEC) {
 
     /* output decimal data */
 
-    t = fs >> 3;
-    fs = fs - (t << 3);
+    t = file_size / g_bytes_per_line;
+    file_size = file_size - t * g_bytes_per_line;
 
-    for (i = 0; t > 0; t--, i += 8) {
-      fprintf(stdout, ".DB %d, %d, %d, %d, %d, %d, %d, %d", in[i], in[i + 1], in[i + 2], in[i + 3], in[i + 4], in[i + 5], in[i + 6], in[i + 7]);
-      if (address == ON) {
-	ae = a + 8-1;
-	print_address();
-	a += 8;
-      }
-      else
-	fprintf(stdout, "\n");
-    }
-
-    if (fs != 0) {
+    for (i = 0; t > 0; t--, i += g_bytes_per_line) {
       fprintf(stdout, ".DB");
-      for (; fs > 0; fs--) {
-	fprintf(stdout, " %d", in[i++]);
-	if (fs > 1)
-	  fprintf(stdout, ",");
+      for (j = 0; j < g_bytes_per_line; j++) {
+        if (j > 0)
+          fprintf(stdout, ",");
+        fprintf(stdout, " %d", in[i + j]);
       }
-      if (address == ON) {
-	ae = i-1;
-	print_address();
+      if (g_print_address == ON) {
+        print_address(address, address + g_bytes_per_line-1);
+        address += g_bytes_per_line;
       }
       else
-	fprintf(stdout, "\n");
+        fprintf(stdout, "\n");
     }
 
+    if (file_size != 0) {
+      fprintf(stdout, ".DB");
+      for (; file_size > 0; file_size--) {
+        fprintf(stdout, " %d", in[i++]);
+        if (file_size > 1)
+          fprintf(stdout, ",");
+      }
+      if (g_print_address == ON)
+        print_address(address, i-1);
+      else
+        fprintf(stdout, "\n");
+    }
   }
-  else if (mode == MOD_BIN) {
-
-    int b, c, d;
+  else if (g_mode == MODE_BIN) {
+    int b, c, d, k;
 
     /* output binary data */
 
-    for (i = 0; i < fs; i++) {
-      fprintf(stdout, ".DB %%");
-      d = 0;
-      for (t = 7; t > -1; t--) {
-	b = 1 << t;
-	c = in[i] & b;
-	d = c >> t;
-	if (d == 0)
-	  fprintf(stdout, "0");
-	else
-	  fprintf(stdout, "1");
+    t = file_size / g_bytes_per_line;
+    file_size = file_size - t * g_bytes_per_line;
+
+    for (i = 0; t > 0; t--, i += g_bytes_per_line) {
+      fprintf(stdout, ".DB");
+      for (j = 0; j < g_bytes_per_line; j++) {
+        if (j > 0)
+          fprintf(stdout, ",");
+        fprintf(stdout, " %%");
+        for (k = 7; k > -1; k--) {
+          b = 1 << k;
+          c = in[i + j] & b;
+          d = c >> k;
+          if (d == 0)
+            fprintf(stdout, "0");
+          else
+            fprintf(stdout, "1");
+        }
       }
-      if (address == ON) {
-	ae = a;
-	print_address();
-	a++;
+      if (g_print_address == ON) {
+        print_address(address, address + g_bytes_per_line-1);
+        address += g_bytes_per_line;
       }
       else
-	fprintf(stdout, "\n");
+        fprintf(stdout, "\n");
     }
 
+    if (file_size != 0) {
+      fprintf(stdout, ".DB");
+      for (; file_size > 0; file_size--) {
+        fprintf(stdout, " %%");
+        for (k = 7; k > -1; k--) {
+          b = 1 << k;
+          c = in[i] & b;
+          d = c >> k;
+          if (d == 0)
+            fprintf(stdout, "0");
+          else
+            fprintf(stdout, "1");
+        }
+        i++;
+        if (file_size > 1)
+          fprintf(stdout, ",");
+      }
+      if (g_print_address == ON)
+        print_address(address, i-1);
+      else
+        fprintf(stdout, "\n");
+    }
   }
 
   free(in);
@@ -199,39 +257,63 @@ int main(int argc, char *argv[]) {
 }
 
 
-int print_address(void) {
+int print_address(int address, int address_end) {
 
-  if (a == ae) {
-    switch (as) {
+  if (address == address_end) {
+    switch (g_address_size) {
     case 1:
-      fprintf(stdout, "\t; $%.1x\n", a);
+      fprintf(stdout, "    ; $%.1x\n", address);
       break;
     case 2:
-      fprintf(stdout, "\t; $%.2x\n", a);
+      fprintf(stdout, "    ; $%.2x\n", address);
       break;
     case 3:
-      fprintf(stdout, "\t; $%.3x\n", a);
+      fprintf(stdout, "    ; $%.3x\n", address);
       break;
     case 4:
-      fprintf(stdout, "\t; $%.4x\n", a);
+      fprintf(stdout, "    ; $%.4x\n", address);
+      break;
+    case 5:
+      fprintf(stdout, "    ; $%.5x\n", address);
+      break;
+    case 6:
+      fprintf(stdout, "    ; $%.6x\n", address);
+      break;
+    case 7:
+      fprintf(stdout, "    ; $%.7x\n", address);
+      break;
+    case 8:
+      fprintf(stdout, "    ; $%.8x\n", address);
       break;
     }
 
     return SUCCEEDED;
   }
 
-  switch (as) {
+  switch (g_address_size) {
   case 1:
-    fprintf(stdout, "\t; $%.1x-$%.1x\n", a, ae);
+    fprintf(stdout, "    ; $%.1x-$%.1x\n", address, address_end);
     break;
   case 2:
-    fprintf(stdout, "\t; $%.2x-$%.2x\n", a, ae);
+    fprintf(stdout, "    ; $%.2x-$%.2x\n", address, address_end);
     break;
   case 3:
-    fprintf(stdout, "\t; $%.3x-$%.3x\n", a, ae);
+    fprintf(stdout, "    ; $%.3x-$%.3x\n", address, address_end);
     break;
   case 4:
-    fprintf(stdout, "\t; $%.4x-$%.4x\n", a, ae);
+    fprintf(stdout, "    ; $%.4x-$%.4x\n", address, address_end);
+    break;
+  case 5:
+    fprintf(stdout, "    ; $%.5x-$%.5x\n", address, address_end);
+    break;
+  case 6:
+    fprintf(stdout, "    ; $%.6x-$%.6x\n", address, address_end);
+    break;
+  case 7:
+    fprintf(stdout, "    ; $%.7x-$%.7x\n", address, address_end);
+    break;
+  case 8:
+    fprintf(stdout, "    ; $%.8x-$%.8x\n", address, address_end);
     break;
   }
 
@@ -243,42 +325,39 @@ int parse_flags(char *f) {
 
   int l;
 
-
-  if (*f != '-') {
+  if (*f != '-')
     return FAILED;
-  }
 
-  l = strlen(f);
+  l = (int)strlen(f);
   if (l == 1)
     return FAILED;
 
   for (f++, l--; l > 0; l--, f++) {
     switch (*f) {
-
     case 'p':
-      header = OFF;
+      g_header = OFF;
       continue;
 
     case 'd':
-      if (mode != MOD_NONE)
-	return FAILED;
-      mode = MOD_DEC;
+      if (g_mode != MODE_NONE)
+        return FAILED;
+      g_mode = MODE_DEC;
       continue;
 
     case 'h':
-      if (mode != MOD_NONE)
-	return FAILED;
-      mode = MOD_HEX;
+      if (g_mode != MODE_NONE)
+        return FAILED;
+      g_mode = MODE_HEX;
       continue;
 
     case 'b':
-      if (mode != MOD_NONE)
-	return FAILED;
-      mode = MOD_BIN;
+      if (g_mode != MODE_NONE)
+        return FAILED;
+      g_mode = MODE_BIN;
       continue;
 
     case 'a':
-      address = ON;
+      g_print_address = ON;
       continue;
 
     default:

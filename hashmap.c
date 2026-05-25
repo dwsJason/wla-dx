@@ -1,6 +1,9 @@
 /*
  * Generic map implementation.
  */
+
+#include "flags.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -31,9 +34,9 @@ typedef struct _hashmap_map{
 /*
  * Return an empty hashmap, or NULL on failure.
  */
-map_t hashmap_new() {
+map_t hashmap_new(void) {
 
-  hashmap_map* m = (hashmap_map*) calloc(sizeof(hashmap_map), 1);
+  hashmap_map* m = (hashmap_map*) calloc(1, sizeof(hashmap_map));
   if (!m)
     goto err;
 
@@ -72,7 +75,7 @@ unsigned int hashmap_hash_int(hashmap_map * m, char* keystring) {
   key ^= (key >> 12);
 
   /* Knuth's Multiplicative Method */
-  key = (key >> 3) * 2654435761;
+  key = (key >> 3) * 2654435761U;
 
   return key % m->table_size;
 }
@@ -244,7 +247,7 @@ any_t hashmap_begin_iteration(map_t in) {
 
   /* On empty hashmap, return immediately */
   if (hashmap_length(m) <= 0)
-    return NULL;	
+    return NULL;        
 
   /* Linear probing */
   for (i = 0; i< m->table_size; i++) {

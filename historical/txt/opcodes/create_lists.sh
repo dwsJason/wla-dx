@@ -72,20 +72,6 @@ export WLA_NICELIST=NICELIST2
 make
 ./op | sort > _65ce02_o
 
-# 6510
-
-make clean
-export WLA_TARGET=MCS6510
-export WLA_NICELIST=NICELIST1
-make
-./op | sort > _6510_a
-
-make clean
-export WLA_TARGET=MCS6510
-export WLA_NICELIST=NICELIST2
-make
-./op | sort > _6510_o
-
 # 65816
 
 make clean
@@ -156,6 +142,20 @@ export WLA_NICELIST=NICELIST2
 make
 ./op | sort > _8080_o
 
+# MC68000
+
+make clean
+export WLA_TARGET=MC68000
+export WLA_NICELIST=NICELIST1
+make
+./op | sort > _68000_a
+
+make clean
+export WLA_TARGET=MC68000
+export WLA_NICELIST=NICELIST2
+make
+./op | sort > _68000_o
+
 # MC6800
 
 make clean
@@ -198,6 +198,48 @@ export WLA_NICELIST=NICELIST2
 make
 ./op | sort > _6809_o
 
+# SuperFX
+
+make clean
+export WLA_TARGET=SUPERFX
+export WLA_NICELIST=NICELIST1
+make
+./op | sort > _superfx_a
+
+make clean
+export WLA_TARGET=SUPERFX
+export WLA_NICELIST=NICELIST2
+make
+./op | sort > _superfx_o
+
+# Cx4
+
+make clean
+export WLA_TARGET=CX4
+export WLA_NICELIST=NICELIST1
+make
+./op | sort > _cx4_a
+
+make clean
+export WLA_TARGET=CX4
+export WLA_NICELIST=NICELIST2
+make
+./op | sort > _cx4_o
+
+# SH-2
+
+make clean
+export WLA_TARGET=SH2
+export WLA_NICELIST=NICELIST1
+make
+./op | sort > _sh2_a
+
+make clean
+export WLA_TARGET=SH2
+export WLA_NICELIST=NICELIST2
+make
+./op | sort > _sh2_o
+
 make clean
 
 # create the final files
@@ -226,11 +268,6 @@ cat header_o_65c02.txt _65c02_o > mnemonics_65c02_o.txt
 
 cat header_a_65ce02.txt _65ce02_a > mnemonics_65ce02_a.txt
 cat header_o_65ce02.txt _65ce02_o > mnemonics_65ce02_o.txt
-
-# 6510
-
-cat header_a_6510.txt _6510_a > mnemonics_6510_a.txt
-cat header_o_6510.txt _6510_o > mnemonics_6510_o.txt
 
 # 65816
 
@@ -271,6 +308,21 @@ cat header_o_6801.txt _6801_o > mnemonics_6801_o.txt
 
 cat header_a_6809.txt _6809_a > mnemonics_6809_a.txt
 cat header_o_6809.txt _6809_o > mnemonics_6809_o.txt
+
+# SuperFX
+
+cat header_a_superfx.txt _superfx_a > mnemonics_superfx_a.txt
+cat header_o_superfx.txt _superfx_o > mnemonics_superfx_o.txt
+
+# Cx4
+
+cat header_a_cx4.txt _cx4_a > mnemonics_cx4_a.txt
+cat header_o_cx4.txt _cx4_o > mnemonics_cx4_o.txt
+
+# SH-2
+
+cat header_a_sh2.txt _sh2_a > mnemonics_sh2_a.txt
+cat header_o_sh2.txt _sh2_o > mnemonics_sh2_o.txt
 
 # cleanup
 

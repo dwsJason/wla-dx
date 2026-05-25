@@ -12,32 +12,38 @@ SYNOPSIS
 --------
 
 | ``wla-6502`` [``OPTIONS``] ``SRC_FILE``
-| ``wla-6510`` [``OPTIONS``] ``SRC_FILE``
 | ``wla-65816`` [``OPTIONS``] ``SRC_FILE``
 | ``wla-65c02`` [``OPTIONS``] ``SRC_FILE``
+| ``wla-65ce02`` [``OPTIONS``] ``SRC_FILE``
+| ``wla-cx4`` [``OPTIONS``] ``SRC_FILE``
 | ``wla-6800`` [``OPTIONS``] ``SRC_FILE``
 | ``wla-6801`` [``OPTIONS``] ``SRC_FILE``
 | ``wla-6809`` [``OPTIONS``] ``SRC_FILE``
+| ``wla-68000`` [``OPTIONS``] ``SRC_FILE``
 | ``wla-8008`` [``OPTIONS``] ``SRC_FILE``
 | ``wla-8080`` [``OPTIONS``] ``SRC_FILE``
 | ``wla-gb`` [``OPTIONS``] ``SRC_FILE``
 | ``wla-huc6280`` [``OPTIONS``] ``SRC_FILE``
 | ``wla-spc700`` [``OPTIONS``] ``SRC_FILE``
+| ``wla-superfx`` [``OPTIONS``] ``SRC_FILE``
 | ``wla-z80`` [``OPTIONS``] ``SRC_FILE``
+| ``wla-z80n`` [``OPTIONS``] ``SRC_FILE``
 
 
 OPTIONS
 -------
 
-.. Option declaration fucks up when using an equal sign
-
-``-D`` __DEFINE\(\=VAR\)__  Define DEFINE with value VAR (VAR is optional)
-
+-h                  Assume all label references are 16-bit by default (size hints still work)
 -i                  Add list file information
--I DIR              Add Include directory
+-k                  Keep empty sections
+-M                  Output makefile rules
 -q                  Quiet mode (``.PRINT*``-directives output nothing)
--v                  Test compile (Don't output any files)
--x                  Extra compile time definitions
+-s                  Don't create _sizeof_* definitions
+-t                  Test compile (Don't output any files)
+-v                  Verbose messages
+-x                  Extra compile time labels and definitions
+-I DIR              Add include directory
+-D DEF              Declare definition
 
 Choose one:
 

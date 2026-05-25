@@ -4,7 +4,7 @@ Assembler Syntax
 Case Sensitivity
 ----------------
 
-WLA is case sensitive, so be careful.
+WLA is case sensitive, except with directives, so be careful.
 
 
 Comments
@@ -24,10 +24,44 @@ function much like ANSI C comments, but unlike the ANSI C comments these can be
 nested.
 
 
+Line splitting
+--------------
+
+Lines can be split using a ``\`` between elements. So instead of writing
+
+    .db 1, 2, 3, 4, 5, 6, 7, 8
+
+it's possible to write
+
+    .db 1, 2, 3, 4 \\
+        5, 6, 7, 8
+
+Note that line splitting works only in places where WLA expects a new label,
+number, calculation, etc. String splitting isn't currently supported.
+
+
+Using Commas
+------------
+
+In many places it's possible to give parameters without commas between them::
+
+    .db 1 2 3 4 5 ; 01 02 03 04 05
+
+**CAVEAT! CAVEAT! CAVEAT!**
+
+If you specify the following
+
+    .db 1 -2 3 -4 5 ; FF FF 05
+
+WLA will detect and compute calculations, so to be sure, always use commas::
+
+    .db 1, -2, 3, -4, 5 ; 01 FE 03 FC 05
+
+    
 Labels
 ------
 
-Labels are ordinary strings (which can also end to a ``:``). Labels starting
+Labels are ordinary strings (which can also end with a ``:``). Labels starting
 with ``_`` are considered to be local labels and do not show outside sections
 where they were defined, or outside object files, if they were not defined
 inside a section.
@@ -57,6 +91,22 @@ This is legal, since each of the ``@CHILD`` labels has a different parent.
 You can specify a parent to be explicit, like so::
 
     jr PARENT1@CHILD@SUBCHILD
+
+You can also use ``__label__`` to refer to the last defined parent label::
+
+    main:                 ; #
+            nop
+            nop
+    @child:
+            nop
+            nop
+    @@grandchild:
+            nop
+            nop
+            jmp __label__ ; jump -> #
+    loop:   nop           ; %
+            nop
+            jmp __label__ ; jump -> %
 
 Note that when you place ``:`` in front of the label string when referring to
 it, you'll get the bank number of the label, instead of the label's address.
@@ -148,6 +198,17 @@ calculations and sees only the preprocessed output of WLA)::
                     ; for WLALINK (so it's better to use \@ with labels inside
                     ; a macro).
 
+To make un-named labels inside a ``.MACRO`` isolated, and the previous example
+to work, use the keyword ``ISOLATED`` ::
+
+    .macro dummy isolated
+    -  dec a        ; #
+       jp nz, -     ; jump -> #
+    .endm
+
+The same issue exists with child labels. See ``.MACRO``'s documentation for
+more details.
+
 WLALINK will also generate ``_sizeof_[label]`` defines that measure the
 distance between two consecutive labels. These labels have the same scope as
 the labels they describe. Here is an example::
@@ -170,6 +231,19 @@ example::
 
 The value of ``_sizeof_Label1`` will still have a value of ``4``.
 
+NOTE: If your code is outside ``.SECTION`` s then an empty byte in the output
+will mark the end of the ``_sizeof_[label]``. Example:
+
+    .ORG $0000
+    Label1:
+    .db 1, 2, 3
+
+    .ORG $0100
+    Label2:
+    .db 4, 5
+
+Here ``_sizeof_Label1`` will be 3 as there is empty space between $0003 - $0100.
+
 
 Number Types
 ------------
@@ -178,7 +252,9 @@ Number Types
 ``1000`` decimal
 ``$100`` hexadecimal
 ``100h`` hexadecimal
+``0x10`` hexadecimal
 ``%100`` binary
+``0b10`` binary
 ``'x'``  character
 ======== ===========
 
@@ -201,11 +277,60 @@ Here are some examples of strings::
     "He said: \"Please, kiss me honey.\""
 
 
+Substitution
+------------
+
+It's possible to substitute definition's name with its value inside a label.
+
+Here's an example::
+
+    .REPEAT 10 INDEX COUNT
+    Label_{COUNT}:                      ; -> Label_0, Label_1, Label_2...
+    .DW Label_{COUNT}
+    .ENDR
+
+Substitution supports minimal formatting for integers::
+
+    .DEFINE COUNT = 10
+    .DEFINE UNIT = 5
+    Label_{%.4x{COUNT}}:                ; -> Label_000a
+    Label_{%.3X{COUNT}}_{%.3X{UNIT}}:   ; -> Label_00A_005
+    Label_{%.9d{COUNT}}:                ; -> Label_000000010
+    Label_{%.3i{COUNT}}:                ; -> Label_010
+
+The examples show all the formatting symbols currently supported.
+
+The same substitution works for strings inside quotes when the quoted string is as follows::
+
+    .db { "HELLO_{COUNT}" }             ; -> "HELLO_10"
+
+Note that only WLA can do the substitution and it needs to know the value of the definition
+at the time the substitution is done, i.e., the time a string containing a substitution is
+parsed.
+
+Also note that you can embed calculations into substitutions::
+
+    .DEFINE COUNT = 1
+    Label_{COUNT+1}:                    ; -> Label_2
+
+It's also possible to substitute text inside .MACROs::
+
+    .MACRO INST_ABCD
+       abcd.b d1, \1
+    .ENDM
+
+    INST_ABCD "d2"                      ; -> abcd.b d1, d2
+    INST_ABCD "d7"                      ; -> abcd.b d1, d7
+
+Note that this kind of substitution only works for lines with assembly instructions inside
+a .MACRO, it doesn't work e.g., for lines with directive calls.
+
+    
 Mnemonics
 ---------
 
 You can give the operand size with the operand itself (and this is
-highly recommended) in WLA 6502/65C02/65CE02/6510/HUC6280/65816/6800/6801/6809::
+highly recommended) in WLA 6502/65C02/65CE02/HUC6280/65816/6800/6801/6809::
 
     and #20.b
     and #20.w

@@ -1,27 +1,17 @@
 #!/bin/sh
 
 #
-# NOTE! All the small and ugly projects inside the "examples" directory
-# are here used as unit tests / if the projects assemble and link without
+# NOTE! All the small and ugly projects inside the "tests" directory
+# are here used as regression tests / if the projects assemble and link without
 # errors, we'll assume that WLA DX is in ok shape. Feel free to add more
 # test projects to the lot.
 #
 
 set -e
 
-changePlatform() {
-    echo ""
-    echo "************************************************************"
-    echo $1
-    echo "************************************************************"
-    cd $1
-}
-
 runTest() {
+    set -e
     cd $1
-    echo ""
-    echo $1
-    echo ""
     make clean
     make
     if test -f "testsfile"; then
@@ -31,13 +21,24 @@ runTest() {
     cd ..
 }
 
-export PATH=$PATH:$PWD/binaries
-echo $PATH
+if [ $# -eq 1 ]; then
+    if [ "$1" = "-windows-x86" ]; then
+        export PATH=$PATH:$PWD/windows/Release
+    elif [ "$1" = "-windows-x64" ]; then
+        export PATH=$PATH:$PWD/windows/x64/Release
+    else
+	export PATH=$PATH:$PWD/binaries:$PWD/build/binaries
+    fi
+else
+    export PATH=$PATH:$PWD/binaries:$PWD/build/binaries
+fi
 
 # byte_tester
-
+echo Building byte_tester...
 cd byte_tester
 make install
+# just in case...
+cp byte_tester* ../binaries/
 
 if test -f "byte_tester"; then
     BYTE_TESTER="byte_tester"
@@ -46,160 +47,77 @@ if test -f "byte_tester.exe"; then
     BYTE_TESTER="byte_tester.exe"
 fi
 
+SHOW_ALL_OUTPUT=false
+if [ $# -eq 1 ]; then
+    if [ "$1" = "-v" ]; then
+        SHOW_ALL_OUTPUT=true
+    fi
+fi
+
+# Valgrind test...
+# Makefiles in the tests folder use WLAVALGRIND to run Valgrind at the same time
+# with WLA and WLALINK
+if [ -n "$NO_VALGRIND" ]; then
+  echo
+  echo '########################################################################'
+  echo 'INFO: Valgrind is disabled via NO_VALGRIND environment variable...'
+  echo '########################################################################'
+  export WLAVALGRIND=
+elif ! [ -x "$(command -v valgrind)" ]; then
+  echo
+  echo '########################################################################'
+  echo 'WARNING: Valgrind is not installed so we cannot perform memory checks...'
+  echo '########################################################################'
+  export WLAVALGRIND=
+else
+  export WLAVALGRIND='valgrind --error-exitcode=1 --tool=memcheck --leak-check=full --errors-for-leak-kinds=all --track-origins=yes -s'
+fi
+
 cd ..
 
-cd examples
+echo
+echo Running tests...
+cd tests
 
-#####################################################################
-# 6502
-#####################################################################
+if $SHOW_ALL_OUTPUT; then
+    echo
+fi
 
-changePlatform 6502
-runTest compiler_test
-runTest linker_test
-runTest operand_hint_test
-runTest slots_test
-runTest struct_test
-cd ..
+set +e
+TEST_COUNT=0
+for PLATFORM in */; do
+    cd $PLATFORM
+        for TEST in */; do
+            # Skip tests starting with _
+            FIRST_CHAR=$(echo $TEST | cut -c1)
+            if [ "$FIRST_CHAR" = "_" ]; then
+                continue
+            fi
 
-#####################################################################
-# 65c02
-#####################################################################
+            # Run test
+            if [ -e "$TEST""makefile" ]; then
+                OUT=$(runTest $TEST 2>&1)
+                if [ $? -ne 0 ]; then
+                    printf "\n\n%s\n\n" "$OUT"
+                    echo "########"
+                    echo FAILURE!
+                    echo "########"
+                    echo Test \"$TEST\" of platform \"$PLATFORM\" failed.
+                    exit 1
+                elif $SHOW_ALL_OUTPUT; then
+                    echo "#####################################################################"
+                    echo Test \"$TEST\" of platform \"$PLATFORM\" succeeded:
+                    echo "#####################################################################"
+                    printf "\n%s\n\n" "$OUT"
+                else
+                    printf .
+                fi
+                # printf "%s" "$OUT"
+                TEST_COUNT=$((TEST_COUNT+1))
+            fi
+        done
+    cd ..
+done
 
-changePlatform 65c02
-runTest linker_test
-cd ..
-
-#####################################################################
-# 65ce02
-#####################################################################
-
-changePlatform 65ce02
-runTest linker_test
-cd ..
-
-#####################################################################
-# 6510
-#####################################################################
-
-changePlatform 6510
-runTest zero_page
-runTest linker_test
-runTest operand_hint_test
-runTest c64_prg_test
-cd ..
-
-#####################################################################
-# 65816
-#####################################################################
-
-changePlatform 65816
-runTest bank_number
-runTest base_test_1
-runTest base_test_2
-runTest base_test_3
-runTest base_test_4
-runTest checksum_12mbit_lorom
-runTest checksum_24mbit_lorom
-runTest checksum_8mbit_hirom
-runTest checksum_8mbit_lorom
-runTest dlm_test
-runTest linker_test
-runTest macro_test
-runTest name_test
-runTest nocashsns_symbol_file
-runTest opcode_test
-runTest operand_hint_test
-runTest wdc_test
-cd ..
-
-#####################################################################
-# GB-Z80
-#####################################################################
-
-changePlatform gb-z80
-runTest appendto_test
-runTest background_test
-runTest bank_number
-runTest linker_test
-runTest namespace_test
-runTest sintest
-runTest union_test
-cd ..
-
-#####################################################################
-# HUC6280
-#####################################################################
-
-changePlatform huc6280
-runTest linker_test
-runTest ram_sections
-cd ..
-
-#####################################################################
-# SPC-700
-#####################################################################
-
-changePlatform spc-700
-runTest linker_test
-cd ..
-
-#####################################################################
-# Z80
-#####################################################################
-
-changePlatform z80
-runTest caddr_test
-runTest rst_test
-runTest linker_header_test
-runTest linker_test_1
-runTest linker_test_2
-runTest ram_sections
-runTest rept_test
-runTest sdsc_test
-runTest sms_test
-runTest smsheader_test
-runTest z81_test
-cd ..
-
-#####################################################################
-# 6800
-#####################################################################
-
-changePlatform 6800
-runTest linker_test
-cd ..
-
-#####################################################################
-# 6801
-#####################################################################
-
-changePlatform 6801
-runTest linker_test
-cd ..
-
-#####################################################################
-# 6809
-#####################################################################
-
-changePlatform 6809
-runTest linker_test
-cd ..
-
-#####################################################################
-# 8008
-#####################################################################
-
-changePlatform 8008
-runTest linker_test
-runTest rst_test
-cd ..
-
-#####################################################################
-# 8080
-#####################################################################
-
-changePlatform 8080
-runTest linker_test
-runTest rst_test
-cd ..
+printf "\n\n"
+echo "OK ($TEST_COUNT tests)"

@@ -1,9 +1,441 @@
 
--------------------------------------------------------------------------------------------------
-1... WLA GB-Z80/Z80/6502/65C02/65CE02/6510/65816/6800/6801/6809/8008/8080/HUC6280/SPC-700 History
--------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+  1... WLA GB-Z80/Z80/Z80N/6502/65C02/65CE02/65816/68000/6800/6801/6809/8008/
+                    8080/HUC6280/SH-2/SPC-700/SuperFX/Cx4 History
+-------------------------------------------------------------------------------
 
-v9.12 (18-Jul-2020) 
+v10.7 (24-May-2026) [ALL] Prefixed by a hashtag didn't propagate through nested
+                      .MACRO calls.
+                    [ALL] Listfile creation for library files should now work.
+                    [ALL] If an object file contained only .SECTIONs in ROM
+                      bank X then ROM bank X's allocation info wasn't printed with
+                      -v switch.
+                    [ALL] .FOPEN uses now directories given with -I flag.
+                    [ALL] BANKS for .SECTION can now be a string definition.
+                    [ALL] Quoted string arguments can be used in .MACROs to replace
+                      e.g., registers on lines with instructions.
+                    [ALL] A label outside .SECTIONs or inside FORCE or OVERWRITE
+                      .SECTION given to a .MACRO can now be used in calculations as
+                      long it has been defined earlier lexically.
+                    [ALL] Added parameterless versions of bankbyte(), base(), slot()
+                      and bank(). bankbyte(label) and bank(label) can be used in .IFs.
+                    [ALL] Added built-in functions is(), get(), org(), orga(),
+                      substring(), definedfunction(), definedmacro(), blank(), match(),
+                      xmatch(), tcount(), left(), mid() and right().
+                    [ALL] Added .DELMACRO and .DELFUNCTION for deleting macros and
+                      functions.
+                    [ALL] Added LATESTDIR and RELATIVEDIR to .INCLUDE and .INCBIN.
+                    [ALL] Jump in .ENDR added offset of 1 for line numbers in errors.
+                    [ALL] Added START and STEP to .REPEAT/.REPT.
+                    [ALL] Added DEFAULTSECTIONSLOT and DEFAULTRAMSECTIONSLOT to
+                      .MEMORYMAP.
+                    [ALL] .FAIL can process multiple strings.
+                    [ALL] When using -h operand hints like .b for labels work now.
+                    [ALL] .STRINGMAPTABLE uses now directories specified with -I.
+                    [ALL] .BASE can once again given inside a .SECTION. NOTE: The
+                      old .BASE before the .SECTION is returned after .ENDS.
+                    [ALL] Implemented missing base(label).
+                    [ALL] Fixed an issue with -h flag and defines in some
+                      instructions being interpreted early as labels.
+                    [ALL] Fix to .MACRO parsing when using ARGS.
+                    [ALL] When an error occurs we print the whole call stack instead
+                      of just the file name and line number where it happened.
+                    [ALL] 16-bit PC references were not enabled for all supported
+                      CPUs (like 6809) in listfiles.
+                    [ALL] Added new operand hint '.#b' - 8-bit zero page; It's the
+                      same as .b, but it also takes the lowest 8 bits of the operand.
+                    [ALL] .STRUCT member names b, w, d and l are now forbidden as
+                      when referencing them the assembler would confuse the
+                      references with size hints.
+                    [ALL] A function can also be now defined using .DEFINE.
+                    [ALL] .ASSERT can now be postponed to link time.
+                    [ALL] WLA assembles now "WLAJ" library files and "WLAm"
+                      object files.
+                    [Cx4] Added support for Cx4 (Capcom Custom Chip 4) CPU/DSP.
+                    [SH2] Added support for Hitachi SH-2 CPU.
+                    [SH2] Added initial Sega 32X memory maps and include files.
+                    [6**] .b and .w now override .8bit and .16bit.
+                    [658] Fixed BRL and PER to work properly.
+                    [658] Added a warning when .ACCU or .INDEX directives override
+                      a width that was set by rep/sep instructions (use -v to see
+                      these).
+                    [68k] Added alias SP for register a7.
+                    [68k] BCLR, BSET and BTST used wrong range [1, 8] / [1, 32] for
+                      bits, fixed to [0, 7] / [0, 31].
+                    [68k] Removed automatic MOVE to MOVEQ, ADD to ADDQ and SUB to
+                      SUBQ optimizations as correctness is more important.
+                    [68k] Added missing instructions: BCHG.B, BCHG.L, BCLR.B,
+                      BCLR.L, BSET.B, BSET.L, BTST.B, BTST.L, CHK.W, NBCD.B, TAS.B.
+                    [68k] Added .NGHEADER, .ENDNG, .NGSOFTDIP, .ENDNGSOFTDIP,
+                      .NGVECTORS and .ENDNGVECTORS for Neogeo development (and
+                      examples/neogeo and include/neogeo).
+                    [68k] Added Sega Mega Drive/Genesis and Sega CD support:
+                      .MDVECTORS, .MCDHEADER, .MCDSPHEADER, memory maps and
+                      include files.
+                    [650] Fixed STX and STY parsing.
+                    [650] Added .INESHEADER and .ENDINES.
+                    [65C] Added .LYNXHEADER and .ENDLYNX.
+                    [689] Added space-after-the-instruction versions of instructions
+                      with zero offset indexing, e.g., "LDA ,X" (old: "LDA,X").
+                    [68x] Instructions that take 8-bit immediate values can now take
+                      anything that fits into eight bits.
+                    [808] Added "MOV M,M", an alias for "HLT".
+                    [800] Fixed "LMI"'s opcode to $3E (was $2E).
+                    [800] Added "LAA", an alias for "NOP".
+                    [800] Added "MOV" versions of the move instructions.
+
+v10.6 (19-Nov-2023) [ALL] Conditions (e.g., "(A > 1 || B < 3)") can now be used
+                      everywhere, outside .IFs.
+                    [ALL] It's not any more possible to create labels and
+                      definitions called "_b" and "_f" as they are reserved names.
+                    [ALL] A definition and a label cannot any more share the same
+                      name inside a source file for the sake of clarity.
+                    [ALL] Added -MP for generating phony targets with -M.
+                    [ALL] Added -MF for specifying a file to write the
+                      dependencies to with -M.
+                    [ALL] Added -c for continuing parsing after encountering an
+                      unknown symbol or a mistyped instruction.
+                    [ALL] Added -w for disallowing labels without a colon terminator.
+                    [ALL] Added FILTERSIZE and FREADSIZE to .INCBIN.
+                    [ALL] Namespace was added in some instances to a local label.
+                    [ALL] Removed namespace propagation to unnamespaced .MACROs.
+                    [ALL] Labels generated by a .MACRO inside an .INCLUDEd and
+                       namespaced file have now namespace added to them.
+                    [ALL] Added .WHILE.
+                    [ALL] Added .CONTINUE and .BREAK that work with
+                      .REPEAT/.REPT/.WHILE.
+                    [ALL] Changed tmpfile creation on WIN32.
+                    [ALL] It's now possible to put multiple instructions on the
+                      the same line by separating them with " \ " (whitespace here
+                      is important).
+                    [ALL] WLA would crash calculating A-B if A was function(L)
+                      where L is a label.
+                    [ALL] .STRINGMAPTABLE uses now .INCDIR.
+                    [ALL] .STRINGMAP and .STRINGMAPTABLE handle now special
+                      characters like "\n" properly.
+                    [ALL] WLA assembles now "WLAl" object files.
+                    [ALL] The assembler has now a limited ability to find the
+                      address of a label if the label is outside .SECTIONs or
+                      inside FORCE and OVERWRITE .SECTIONs and the label is
+                      defined lexically before it is referenced.
+                    [ALL] Added -p (and -SX and -SY) for pausing the assembler
+                      after a screen full of text has been printed to output.
+                    [Z80] Added BASEADDRESS to .SMSHEADER.
+                    [Z8N] Added support for Z80N.
+
+v10.5 (23-Jun-2023) [ALL] .DSB, .DSW, .DSL and .DSD produced only one pending
+                      calculation struct when encountered a pending calculation
+                      thus the result was wrong.
+                    [ALL] Added .ALIGN.
+                    [ALL] Added .ASSERT.
+                    [ALL] Added BANK, SLOT, BASE, ORG and ORGA to .SECTION.
+                    [ALL] Added BASE to .RAMSECTION.
+                    [ALL] Added a new .SECTION type: SEMISUPERFREE.
+                    [ALL] Added AUTOPRIORITY to .SECTION.
+                    [ALL] Added ISOLATED to .INCLUDE.
+                    [ALL] References inside a .MACRO inside a namespaced file
+                      have now the namespace added to them.
+                    [ALL] .MACRO's named ARGS now only replace existing
+                      definitions while the .MACRO is running.
+                    [68K] Added support for MC68000.
+                    [68K] Added .COMPUTESMDCHECKSUM and .SMDHEADER.
+                    [658] Added support for "MVN $xxyy" and "MVP $xxyy".
+
+v10.4 (24-Nov-2022) [ALL] If a value is .DEFINEd later in the same source file
+                      than used in a pending calculation, WLA can now solve
+                      the pending calculation before exporting it to WLALINK.
+                    [ALL] Added .SEEDRANDOM (seeds random number generator
+                      with current time -> random).
+                    [ALL] Added built-in functions min(a,b), max(a,b),
+                      random(min,max), sqrt(a), abs(a), cos(a), sin(a), tan(a),
+                      acos(a), asin(a), atan(a), atan2(a,b), cosh(a), sinh(a),
+                      tanh(a), log(a), log10(a), pow(a,b), sign(a) and
+                      clamp(value,min,max).
+                    [ALL] When a built-in function was called with a negative
+                      sign the sign was ignored sometimes.
+                    [ALL] Floating point values can be given to a .MACRO as
+                      arguments and accessed via \1 etc., they are not rounded to
+                      integers any more. Previously only named args would work
+                      without rounding.
+                    [ALL] When using a .FUNCTION the result was rounded to
+                      an integer - not any more.
+                    [ALL] .FUNCTION body can now be a single argument.
+                    [ALL] Built-in (and .FUNCTION) arguments can now be put on
+                      multiple lines.
+                    [ALL] We now use ANSI C's tmpfile() to create tmp files.
+                      This should allow multiple concurrent instances of WLA to
+                      run in the same directory at the same time.
+                    [ALL] When using -M, if you specify -o or -l later on the
+                      command line you can output an object or a library file
+                      at the same time. Disable file generation with -t.
+                    [ALL] A calculation can be split into multiple lines if the
+                      last symbol on the line is a '+', '-', '*'. etc.
+                    [ALL] Unnamed .STRUCTs inside other .STRUCTs don't generate
+                      _paddingof_* definitions any more.
+                    [ALL] Pending calculations work now as macro arguments.
+                    [ALL] Fixed INSTANCEOF in .ENUM when .STRUCT used SIZE
+                      (WLA doesn't generate bytes in that case any more).
+                    [ALL] Negating pending calculations inside parentheses inside
+                      pending calculations ignored the sign.
+                    [ALL] Negating calculations inside parentheses should now
+                      work in every case.
+                    [ALL] Dotted .INSTANCEOF works now in .ENUMs.
+
+v10.3 (02-Oct-2022) [ALL] Improved parser for .HEX, and added BLOCK to .HEX.
+                    [ALL] "\\" should now work inside strings.
+                    [ALL] .MACRO calling another .MACRO, inside a namespaced
+                      file, should now work.
+                    [ALL] .MACRO arguments can now be put inside parentheses
+                      when calling a .MACRO (e.g., "MyMacro(1, 2)").
+                    [ALL] defined() can now process strings with substitution.
+                    [ALL] Added an alternative way of defining a .MACRO
+                      (e.g., ".macro SUM(value1,value2) isolated").
+                    [ALL] Added .FUNCTION (for things like ".DB SUM(1, 2)").
+                    [ALL] Multibyte .DEFINEs (e.g., "MB = $01 $00 $02") were
+                      broken in v10.2.
+                    [ALL] Multibyte .DEFINEs work now better inside other
+                      multibyte .DEFINEs.
+                    [ALL] Calculations like ">-VAR" and "2--1" work now,
+                      only ">(-VAR)" and "2-(-1)" used to work before.
+                    [ALL] Added -v1 and -v2 (shorter verbose levels).
+                    [ALL] Changed the license to GPL-2.0-or-later.
+                    [ALL] Parameters (SKIP, READ, SWAP, FSIZE and FILTER)
+                      to .INCBIN can now be given in any order.
+                    [ALL] Parameters (ONCE and NAMESPACE) to .INCLUDE can
+                      now be given in any order.
+                    [ALL] Parameters (NAME and SIZE) to .ARRAYDEFINE can
+                      now be given in any order.
+                    [ALL] Negative READ parameter to .INCBIN means that
+                      many bytes are not read from the end of the file.
+                    [ALL] WLA's ability to calculate A-B would break the
+                      execution of the app if A was a definition.
+                    [ALL] Added optional keywords COUNT, MIN and MAX to
+                      .DBRND and .DWRND.
+                    [GB ] Sometimes WLA-GB would generate unused pending
+                      calculations when parsing the code, and namespaces would
+                      not work in them thus breaking the linking phase.
+                    [SPC] Structs should work now better with SPC-700's
+                      instructions.
+                    [GB ] Added flag aliases (C -> LSS and LST, NC -> GTE
+                      and GEQ, NZ -> NEQ, Z -> EQU) to CALL, JP, JR and RET.
+                    [Z80] Added flag aliases (C -> LSS and LST, M -> NEG,
+                      NC -> GTE and GEQ, NZ -> NEQ, P -> POS, Z -> EQU) to
+                      CALL, JP, JR and RET.
+
+v10.2 (24-Jun-2022) [ALL] Added SIZE to .RAMSECTION.
+                    [ALL] Added -d to disable WLA's ability to calculate A-B
+                      where A and B are labels.
+                    [ALL] If SIZE is used with a .SECTION or .RAMSECTION and
+                      the section doesn't fit into it, we now issue an error
+                      instead of a warning.
+                    [ALL] .FOPEN should now work with makefile generation.
+                    [ALL] WLA's summary is now printed to stdout instead of
+                      stderr.
+                    [ALL] Added support for UTF-8 source files (meaning labels,
+                      macro names, definitions, etc. can all be UTF-8).
+                    [ALL] When .ROMBANKMAP had ROM banks of different sizes,
+                      the verbose summary's ROM information was not fully working.
+                    [ALL] Memory overwrite messages should now have working
+                      line numbers in all cases.
+                    [ALL] WLA assembles now "WLAI" library files and "WLAk"
+                      object files.
+                    [ALL] Labels without ':' can now be used right on the next
+                      line after a .MACRO call.
+                    [ALL] Added keywords ISOLATED, ISOLATELOCAL and ISOLATEUNNAMED
+                      to .MACRO. These make the local and unnamed labels
+                      inside a .MACRO to stay inside and not affect the
+                      outside world. The same goes for child label stack.
+                    [ALL] We now don't do substitution in code that is skipped
+                      using .IFs.
+                    [ALL] Added SIZE to .DSTRUCT and .STRUCT and to INSTANCEOF
+                      in .RAMSECTION and .ENUM.
+                    [ALL] If padding is put to a .DSTRUCT or INSTANCEOF in
+                      .RAMSECTION or .ENUM, _paddingof_* definition is created
+                      unless -s is given.
+                    [ALL] Added optional COUNT to INSTANCEOF in .RAMSECTION and
+                      .ENUM.
+                    [ALL] Added NOLABELS to .DSTRUCT.
+                    [ALL] Added round(), floor() and ceil().
+                    [Z80] Added "EX HL,DE" (an alias for "EX DE,HL").
+                    [Z80] Added "EX HL,(SP)" (an alias for "EX (SP),HL").
+                    [Z80] Added "EX IX,(SP)" (an alias for "EX (SP),IX").
+                    [Z80] Added "EX IY,(SP)" (an alias for "EX (SP),IY").
+                    [658] WDM takes now a byte (i.e., "WDM $12").
+                    [651] Removed wla-6510 as wla-6502 can be used for 6510.
+                    [650] Added undocumented opcodes to wla-6502.
+                    [GB ] It's now possible to set the number of ROM banks to
+                      any value larger than 0.
+                    [GB ] WARNING: .ROMBANKS / .ROMBANKMAP don't write the ROM
+                      size to $0148 any more, use .ROMSIZE for that.
+                    [GB ] Added ROMSIZE to .GBHEADER.
+
+v10.1 (19-Feb-2022) [ALL] Arguments to .SECTION and .RAMSECTION can be now
+                      given in any order, only the first argument must be the
+                      section's name.
+                    [ALL] A definition can be substituted with its value in
+                      labels (e.g., label_{COUNTER}) and in quoted strings
+                      (e.g., {"ID={COUNTER}"}). Note that also label_{COUNTER+1}
+                      works.
+                    [ALL] Strings can be split to multiple lines using '\'.
+                    [ALL] Added WINDOW and BITWINDOW to .SECTION and .RAMSECTION.
+                      These can be used to limit where .SECTIONs and
+                      .RAMSECTIONs are placed.
+                    [ALL] The assembler is now able to calculate A-B where
+                      A and B are labels in the same section. Only the linker
+                      used to be able to do this.
+                    [ALL] WLA assembles now "WLAG" library files and "WLAi"
+                      object files.
+                    [ALL] Fixed multiple memory leaks. Should now work better
+                      on an Amiga.
+                    [ALL] .STRINGMAPTABLE works now with makefile generation.
+                    [ALL] We don't try to process special characters in
+                      filenames in .INCDIR, .INCLUDE, .INCBIN, .FOPEN,
+                      .BACKGROUND and .STRINGMAPTABLE.
+                    [ALL] .IFs like ".if MINUS_ONE == -1" (negative value on
+                      the right side) didn't use to work.
+                    [ALL] "JR -" (similar direct jumps to local labels) should
+                      work again.
+                    [ALL] Sharing a namespace between sections should not make
+                      WLA to crash at exit.
+                    [ALL] MAX_NAME_LENGTH is now 2047 instead of 255. This
+                      change allows longer strings/labels (NOTE: On Amiga
+                      and MSDOS the limit is 511, due to limited stack).
+                    [ALL] Turned some huge stack allocations into heap
+                      allocations.
+                    [ALL] \@ should now work in .IFs.
+                    [ALL] __label__ should now work better in calculations.
+                    [658] The maximum SRAMSIZE in SNES ROM header is now 7
+                      instead of 3.
+                    [SFX] Fixed "MOVE (xx),Rn" macro instruction parsing. And
+                      even currently WLA cannot create a SMS instruction if
+                      WLA postpones the argument's handling to WLALINK...
+                    [Z80] Added CHECKSUMSIZE and FORCECHECKSUM to .SMSHEADER.
+
+v10.0 (21-Jun-2021) [ALL] WARNING: Precedence of operators in calculations
+                      that WLA calculates is now more fine grained and C like.
+                    [ALL] WARNING: .ASC didn't map \0 and \x inside a string,
+                      but now all bytes given to .ASC are mapped. Consider
+                      using .ASCSTR if you don't want to map special
+                      characters.
+                    [ALL] All strings (inside "") now support \n, \r, \t, \0,
+                      \x, \< and \>.
+                    [ALL] '\n', '\r', '\t' and '\0' are now supported.
+                    [ALL] ASC() has now wider input support: e.g., ASC('\n')
+                      and ASC($D) work.
+                    [ALL] It's possible to feed a definition's name to a
+                      .MACRO by prefixing it with '&', e.g. &definition.
+                    [ALL] Use ?1 inside a .MACRO to get the value of the
+                      definition given as argument 1 (and prefixed with '&').
+                    [ALL] Added support for nameless INSTANCEOFs in
+                      .ENUMs, .STRUCTs and .RAMSECTIONs.
+                    [ALL] Computations with 32-bit binary values with all 32
+                      bits defined work now.
+                    [ALL] It's possible to use binary values in command line
+                      definitions (e.g., -D VALUE1=%10101010).
+                    [ALL] Hexadecimal values can now also be given as 0xABCD,
+                      binary values as 0b11110000.
+                    [ALL] .FAIL defaults now to exit code 1, and takes an
+                      optional exit code (e.g., ".FAIL 2").
+                    [ALL] It's now possible to create, read and write into own
+                      arrays using .ARRAYDEFINE/.ARRAYDEF/.ARRAYIN/.ARRAYOUT.
+                    [ALL] Added .ARRAYDB, .ARRAYDW, .ARRAYDL and .ARRAYDD.
+                    [ALL] Added .BITS (like .DB but for bits) and .ENDBITS.
+                    [ALL] WLA assembles now "WLAF" library files and "WLAg"
+                      object files.
+                    [ALL] Added .FILTER (same as .DBM, but doesn't define
+                      any bytes).
+                    [ALL] Pending calculations inside bankheader sections
+                      should work again.
+                    [ALL] If an empty .SECTION/.RAMSECTION uses keyword KEEP
+                      it is no longer discarded.
+                    [ALL] The source section of APPENDTO operation is now
+                      linked with its ID, not name, so multiple sources
+                      with the same name work now.
+                    [ALL] defined(DEF_A) can be used in conditions to ask
+                      if DEF_A is defined.
+                    [ALL] exists("file.bin") can be used in conditions to
+                      ask if "file.bin" exists.
+                    [ALL] .IF takes now complex conditions, e.g.,
+                      ".IF !defined(ZERO) && defined(ONE) && (ONE > 0)" works.
+                    [ALL] Added .ELIF.
+                    [ALL] Added ARG_IMMEDIATE to the types of an argument
+                      of a .MACRO (asked using e.g., '\?1').
+                    [ALL] Added a flag "-k" that forces WLA to keep all
+                      empty sections.
+                    [ALL] Added AFTER keyword to .SECTION and .RAMSECTION,
+                      which makes sections to be placed OFFSET bytes apart.
+                    [ALL] Added .FTELL (get the file position).
+                    [ALL] Added .FSEEK (set the file position).
+                    [ALL] -v prints now more information about the RAM/ROM
+                      usage.
+                    [ALL] Data generated by .MACROs and .REPEATs is now
+                      visible in listfiles.
+                    [ALL] Added support for LOBYTE() (get the low byte, bits
+                      0-7), HIBYTE() (get the high byte, bits 8-15), LOWORD()
+                      (get the low word, bits 0-15), HIWORD() (get the high
+                      word, bits 16-31), BANKBYTE() (get the bank byte,
+                      bits 16-23) and BANK() (get the bank).
+                    [ALL] Unix file paths in assembly files (.INCDIR...)
+                      should now work Amiga.
+                    [SFX] Added Super FX support.
+                    [GB ] Added alias "CPL A" (of "CPL").
+                    [GB ] Added support for "STOP $01" - "STOP" with extra
+                      byte.
+                    [Z80] Added SL1 (alias for SLL).
+                    [Z80] Added "RES 0,(IX+d),A", "RES 0,(IY+d),A",
+                      "RL (IX+d),A", "RL (IY+d),A", "RLC (IX+d),A",
+                      "RLC (IY+d),A", "RR (IX+d),A", "RR (IY+d),A",
+                      "RRC (IX+d),A", "RRC (IY+d),A", "SET 0,(IX+d),A",
+                      "SET 0,(IY+d),A", "SLA (IX+d),A", "SLA (IY+d)",A",
+                      "SLL (IX+d),A", "SLL (IY+d),A", "SRA (IX+d),A",
+                      "SRA (IY+d),A", "SRL (IX+d),A", "SRL (IY+d),A" and
+                      variants.
+
+v9.12 (20-Mar-2021) [ALL] Added support for ADDR and FARADDR to .TABLE.
+                    [ALL] Added .STRINGMAP and .STRINGMAPTABLE.
+                    [ALL] Multiple include directories (via multiple -I)
+                      are now supported.
+                    [ALL] Use LABEL_{\@+1} instead of LABEL_\@+1
+                      inside a macro, if you want to reference the next
+                      label instead of the label's address + 1.
+                    [ALL] Missing .INCBIN/.INCLUDE files don't break makefile
+                      rules generation (-M) any more.
+                    [ALL] Fixed .DBM, .DWM and .DLM, and \2 in .DWM and .DWL.
+                    [ALL] .MACRO string expansion (e.g., "\1") now uses parsed
+                      arguments instead of just copying the plain text of
+                      the argument.
+                    [ALL] Object and library files support more than 256
+                      source file IDs.
+                    [ALL] WLA assembles now "WLAA" library files and "WLAb"
+                      object files.
+                    [ALL] Fixed listfile writer, now opcode data stays better
+                      on the lines without spillovers. Affects 65816, Z80,
+                      SPC-700, 65C02, 65CE02 and HuC6280.
+                    [ALL] Added support for ASC('?') (.ASC for individual
+                      characters), e.g., "LD A, ASC('A')".
+                    [ALL] Source code line can be split to multiple lines
+                      using '\' between elements, in many places.
+                    [ALL] .FAIL takes now an optional string.
+                    [ALL] .DL, .DSL, .DLM etc. work also on other targets
+                      than 65816.
+                    [ALL] Added support for .DD, .DSD, .DDM, the same as
+                      .DB etc., but double word (32-bit).
+                    [ALL] Added a flag "-h" to make all label references 16-bit
+                      by default (size hints still work).
+                    [ALL] Added support for .HEX (yet another way of
+                      defining bytes).
+                    [ALL] Added support for __label__ (last defined parent
+                      label).
+                    [ALL] Added .ASCSTR that maps (like .ASC) only supplied
+                      strings, not loose bytes.
+                    [658] SECTIONEND labels that overflowed from a bank
+                      had wrong address in symbol files.
+                    [Z80] Fixed the broken (broke in v9.11) regioncode
+                      in .SMSHEADER.
+                    [SPC] It's now possible to use e.g., defines with
+                      mnemonics like BBC and SET1, not just raw numbers.
+                    [SPC] In many mnemonics where a dot was required you can
+                      now also use commas instead (e.g., BBC and SET1).
 
 v9.11 (17-Jul-2020) [ALL] Stack calculator's string checker handled only
                       63 characters long strings.
@@ -114,8 +546,8 @@ v9.9 (15-Aug-2019) [ALL] Added unions: .UNION (and .NEXTU and .ENDU).
                    [ALL] WLA can now be given string definitions from the
                      command line.
                    [680] Added support for MC6800.
-                   [680] Added support for MC6801.
-                   [680] Added support for MC6809.
+                   [681] Added support for MC6801.
+                   [689] Added support for MC6809.
                    [800] Added support for I8008.
                    [658] 24-bit addresses of .RAMSECTION labels should work
                      now when using .LOROM / .HIROM. / .EXHIROM.
@@ -355,7 +787,7 @@ v9.3 (09-Sep-2006) [ALL] Updated makefiles (by Tobias Pflug).
                      labels appear (e.g., only "MAIN+0" used to work).
                    [ALL] Added AmigaOS4 makefiles (by Ventzislav Tzvetkov).
                    [ALL] Some code cleanups.
-                   [ALL] Fixed the WIN32 makefiles (by Daniël Hörchner).
+                   [ALL] Fixed the WIN32 makefiles (by Daniï¿½l Hï¿½rchner).
                    [650] Fixed class 4 opcodes to work again.
 
 v9.2 (22-Aug-2004) [ALL] WLA can generate makefile rules (flag 'M')
@@ -505,7 +937,7 @@ v8.8 (25-Feb-2003) [65c] "DEA" assembled to $3a, $00. Removed the extra $00.
                      when a dot was encountered.
                    [ALL] Added support for longer filenames (> 63 characters).
                    [ALL] A correctly, but partially written mnemonic would
-                     cause WLA to break the compiling, but without giving
+                     cause WLA to break the assembling, but without giving
                      an error message.
                    [ALL] Fixed a rare bug which caused WLA and WLALINK to
                      disagree on section id numbers.
@@ -519,7 +951,7 @@ v8.7 (28-Nov-2002) [ALL] Added DSB and DSW, and EXPORT to .ENUM.
                    [ALL] Value parsers accept now big (32bit) values.
                      Previously only 16bit (and 24bit for 65816) values
                      were accepted.
-	           [ALL] ".ende" works now also (only ".ENDE" used to work).
+                   [ALL] ".ende" works now also (only ".ENDE" used to work).
                    [ALL] Added .STRUCT.
                    [ALL] Macro and repeat stacks are now dynamic.
                    [Z80] The linenumber in memory references generated by
@@ -623,7 +1055,7 @@ v8.1 (03-Jul-2001) [ALL] EXPORT'ing more than once the same definition
                      as labels.
 
 v8.0 (19-May-2001) [ALL] Simplified WLA engine a lot by leaving away ROM and
-                     program file compiling, and the old, crippled error
+                     program file assembling, and the old, crippled error
                      reporting engine.
                    [ALL] Removed .FOOTER and .HEADER (no longer required).
                    [ALL] WLA assembles now "WLAQ" library files and "WLAD"
@@ -660,7 +1092,7 @@ v7.4 (02-May-2001) [ALL] Added many new error messages.
                    [ALL] Result placing in stack calculator could fail if the
                      result's position wasn't inside a section.
                    [ALL] Modulo/division by zero doesn't crash WLA anymore.
-                   [ALL] Now also in ROM compiling mode it's possible to refer
+                   [ALL] Now also in ROM assembling mode it's possible to refer
                      to future value definitions with .DB and .DW.
                    [ALL] Win32 port uses now PID in the temp file name.
                    [ALL] Fixed few places which could generate incorrect
@@ -746,7 +1178,7 @@ v7.0 (03-Mar-2001) [ALL] WLA couldn't handle files starting with ";".
                    [ALL] Definitions take also strings as values.
                    [ALL] Code cleanups.
                    [ALL] Exporting an undefined definition doesn't break
-                     the compiling loop (only a warning is issued).
+                     the assembling loop (only a warning is issued).
                    [ALL] Quotation marks are accepted inside strings.
                    [ALL] Temporary files are placed into the current working
                      directory and under Unix the names incorporate PID.
@@ -786,7 +1218,7 @@ v6.9 (23-Oct-2000) [ALL] Enhanced .MACRO error messages.
 v6.8 (09-Oct-2000) [Z80] Fixed "LD C, RL*" -mnemonics.
                    [651] Added support for 6510 systems (wla-6510).
                    [ALL] Enhanced documentation.
-                   [ALL] Library file compiling was broken in the previous
+                   [ALL] Library file assembling was broken in the previous
                      release.
 
 v6.7 (07-Oct-2000) [ALL] Added NARGS to .MACRO.
@@ -810,10 +1242,10 @@ v6.6 (25-Sep-2000) [ALL] .EMPTYFILL didn't function properly when .ROMBANKMAP
 
 v6.5 (20-Sep-2000) [ALL] Optimized number decoding.
                    [ALL] Enhanced documentation.
-                   [ALL] Binary file compiling is now called program file
-                     compiling (still doesn't suit it 100%).
+                   [ALL] Binary file assembling is now called program file
+                     assembling (still doesn't suit it 100%).
                    [ALL] Macros couldn't be used before setting an ORG.
-                   [Z80] Program file compiling accepts now BANKHEADER
+                   [Z80] Program file assembling accepts now BANKHEADER
                      section for bank 0.
                    [Z80] The default program file suffix is now '.prg'.
                    [Z80] NO$GMB symbol files can also be written.
@@ -885,7 +1317,7 @@ v6.2 (31-Aug-2000) [ALL] Enhanced error messages.
                      using the old error message engine.
                    [ALL] Negative values in the 16bit range are now
                      handled with better care.
-                   [ALL] When compiling a ROM image and using a section
+                   [ALL] When assembling a ROM image and using a section
                      inside direct mapped code WLA would screw up the data.
 
 v6.1 (26-Aug-2000) [ALL] Directives accept now definitions as arguments.
@@ -986,7 +1418,7 @@ v4.1 (29-Mar-2000) Enhanced documentation.
 
 v4.0 (19-Mar-2000) Optimized data parsing.
                    Added a much better error messaging system as default.
-                   Added "-f" -option for fast compiling (uses old error
+                   Added "-f" -option for fast assembling (uses old error
                      messaging system with few enhancements).
                    "LDH (x), A" and "LDH A, (x)" support was broken due to a
                      typo.
@@ -1141,7 +1573,6 @@ v1.0 (12-Dec-1998) The first public release.
 2... WLAB History
 ------------------------------------------------------------------------------
 
-
 v1.2 (31-Mar-2003) Made address printing more useful.
 
 v1.1 (04-Sep-2000) Uses now WLA v6.3+ syntax (introduced commas).
@@ -1153,7 +1584,6 @@ v1.0 (23-Aug-2000) The first public release.
 ------------------------------------------------------------------------------
 3... WLAD History
 ------------------------------------------------------------------------------
-
 
 v1.3 (21-Oct-2000) String detection works better.
 
@@ -1170,11 +1600,132 @@ v1.0 (10-Jul-2000) The first public release.
 4... WLALINK History
 ------------------------------------------------------------------------------
 
+v5.22 (24-May-2026) When calculating _sizeof_* for labels we now take unused
+                      output bytes into account.
+                    Appended .RAMSECTIONs were still affecting the original
+                      RAM bank in -v listing.
+                    Use -sE to write EQU symbol file (e.g., for openMSX).
+                    Fixed the calculation of Sega Mega Drive ROM checksum.
+                    Added -C which doesn't generate errors for duplicate
+                      labels or definitions, but only when their values
+                      are the same.
+                    Fixed a possible buffer overflow read when generating
+                      listfiles.
+                    Global references from an isolated .INCLUDE should
+                      now work.
+                    Added support for Commodore 64 cartridge types (via
+                      -64): NORMAL4K, NORMAL8K, NORMAL16K, ULTIMAX4K,
+                      ULTIMAX8K, ULTIMAX16K, OCEAN, MAGICDESK, EASYFLASH,
+                      SIMONSBASIC, EPYXFASTLOAD, C64GS, COMAL80, GMOD2,
+                      RGCD and GMOD3.
+                    Added -E for writing debug exports (VICE, RGBDS, MESEN,
+                      EMULICIOUS, CSPECT, NOCASH, MAME and JSON).
+                    .ASSERT can now be postponed to link time.
+                    Added -sM for writing MAME compatible flat symbol file.
+                    Added -O (BIN, SMD, MD) Mega Drive output ROM file
+                      format.
+                    Added support for Hitachi SH-2.
+                    Added -g for writing list files where the object
+                      files are.
 
-v5.14 (23-Aug-2020) Fixed buggy symbol file name generation.
+v5.21 (19-Nov-2023) WLALINK writes now version 3 WLA symbol files.
+                    Symbol files created with -S contain now [sections] and
+                      [ramsections] and "wlasymbol true" under [information].
+                    If -d is used we don't give a .SECTION discarded message
+                      for .SECTIONs that were APPENDTO other .SECTIONs.
+                    Added -p (and -SX and -SY) for pausing the linker after
+                      a screen full of text has been printed to output.
+
+v5.20 (23-Jun-2023) Added [sectionwriteorder] and [ramsectionwriteorder]
+                      to linkfile.
+                    Added -pS and -pR that make WLALINK to ignore .SECTION
+                      types when writing the .SECTIONs to output, only
+                      .SECTION's PRIORITY (and size) will affect the order.
+                    Negative definitions have now 8 characters in a symbol
+                      file written with -S.
+                    By default WLALINK doesn't allow duplicate labels or
+                      or .DEFINEs. Use now -c to allow them.
+
+v5.19 (24-Nov-2022) WLALINK turned doubles into ints too early in computing
+                      pending calculations on some cases thus losing
+                      precision.
+
+v5.18 (02-Oct-2022) Added -v1 and -v2 (shorter verbose levels).
+                    Pending calculations that were marked negative inside
+                      pending calculations should now work.
+                    Pending calculations that contain pending calculations
+                      that are defined in other files should work now.
+                    Big optimizations that should help linking projects with
+                      lots of sections, pending calculations and/or files.
+
+v5.17 (24-Jun-2022) Added SIZE to [sections] and [ramsections].
+                    Added -R (file paths inside link file are relative to
+                      linkfile's location).
+                    WLALINK's summary is now printed to stdout instead of
+                      stderr.
+                    WLALINK didn't print verbose mode's summary at the end if
+                      listfile writing was enabled, but there was no listfile
+                      data.
+                    Bankheader sections now have listfile data.
+                    Sections that were appended to other sections have now
+                      listfile data.
+                    Included file in the middle of a source file doesn't
+                      kill the listfile data before it in the source file
+                      any more.
+                    Code outside .SECTIONs has now listfile data.
+                    Listfiles contain now line number, base (65816 only),
+                      bank, slot, PC and offset in addition to hexadecimal
+                      bytes.
+                    If .SECTION "A" is using "AFTER "B"", .SECTION "A" will
+                      now inherit .SECTION "B"'s .BASE as well.
+                    We now skip the generated RAM_USAGE_SLOT_* labels when
+                      trying to automatically find load address for a CBMPRG.
+
+v5.16 (19-Feb-2022) Added support for WINDOW and BITWINDOW in .SECTION and
+                      .RAMSECTION.
+                    Fixed multiple memory leaks. Should now work better
+                      on an Amiga.
+                    On Windows it was possible that -s actually wrote a WLA
+                      symbol file instead of a NOCA$H symbol file.
+                    Removed warnings that begin with "COMPUTE_STACK: The
+                      passed on SLOT/BANK/BASE changed..." as they were kind
+                      of pointless.
+
+v5.15 (21-Jun-2021) Fixed listfile writing when there is no listfile data
+                      in object files.
+                    It's possible to give binary values in [definitions].
+                    Pending 32-bit calculations work now in bankheader
+                      sections.
+                    Errors should print now properly if it happened in a
+                      source file with file ID > 255.
+                    If a .SECTION/.RAMSECTION "B" is merged with section "A"
+                      using APPENDTO keyword, "SECTIONEND_A" label is moved
+                      to the end of the new, bigger section "A" and labels
+                      "SECTIONEND_B" and "SECTIONSTART_B" are deleted.
+                    Duplicate SECTIONEND_* and SECTIONSTART_* labels (for
+                      sections with same names) are no longer renamed.
+                    Chaining APPENDTO sections works now, rewrote the
+                      APPENDTO/AFTER section sorter.
+                    WLALINK now creates symbols RAM_USAGE_SLOT_x_BANK_y_START
+                      and RAM_USAGE_SLOT_x_BANK_y_END that contain the
+                      addresses of the first and last used bytes in RAM
+                      slots/banks. Information is calculated using
+                      .RAMSECTIONs.
+                    -v prints now more information about the RAM/ROM usage.
+                    WLALINK writes now version 2 WLA symbol files.
+                    Symbol files created with -S (and -A) contain now object
+                      file IDs for entries in [source files v2] and
+                      [addr-to-line mapping v2].
+                    Listfiles contain now information about .MACROs and
+                      .REPEATs.
+
+v5.14 (20-Mar-2021) Fixed buggy symbol file name generation.
                     Fixed SMS checksum calculation if .SMSHEADER is not used.
+                    Fixed a couple of bugs in listfile generation.
+                    Added -D (don't create _sizeof_* definitions).
+                    Defines are no longer written into NO$CASH symbol files.
 
-v5.13 (17-Jun-2020) Added CMB PRG header writing (with flags -t and -a).
+v5.13 (17-Jun-2020) Added CBM PRG header writing (with flags -t and -a).
                     Added support for ORG/ORGA to [ramsections].
                     Added support for [sections] in linkfile.
                     Added support for section type and priority changing

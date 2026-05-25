@@ -6,50 +6,76 @@
 
 #include "defines.h"
 
-#include "include_file.h"
+#include "include.h"
 #include "listfile.h"
+#include "phase_3.h"
+#include "main.h"
 
 
-extern struct incbin_file_data *incbin_file_data_first, *ifd_tmp;
-extern struct section_def *sections_first, *sections_last, *sec_tmp, *sec_next;
-extern struct file_name_info *file_name_info_first, *file_name_info_last, *file_name_info_tmp;
-extern unsigned char *rom_banks, *rom_banks_usage_table;
-extern FILE *file_out_ptr;
-extern char *tmp_name, tmp[4096];
-extern int verbose_mode, section_status, cartridgetype, output_format;
+extern struct incbin_file_data *g_incbin_file_data_first, *g_ifd_tmp;
+extern struct section_def *g_sections_first, *g_sections_last, *g_sec_tmp, *g_sec_next;
+extern struct file_name_info *g_file_name_info_first, *g_file_name_info_last, *g_file_name_info_tmp;
+extern unsigned char *g_rom_banks, *g_rom_banks_usage_table;
+extern FILE *g_file_out_ptr;
+extern char *g_tmp, *g_global_listfile_cmds;
+extern int g_section_status, g_cartridgetype, g_output_format, *g_global_listfile_ints, g_global_listfile_items;
+extern int *g_bankaddress;
+
+
+static int _print_fscanf_error_accessing_internal_data_stream(int file_name_id, int line_number) {
+
+  print_text(NO, "%s:%d: listfile_collect(): Could not read enough elements from the internal data stream. Please submit a bug report!\n",
+          get_file_name(file_name_id), line_number);
+
+  return FAILED;
+}
 
 
 int listfile_collect(void) {
 
-  int add = 0, skip = 0, file_name_id = 0, inz, line_number = 0, command = 0, inside_macro = 0, inside_repeat = 0;
-  int x, y;
-  int dstruct_start = -1;
+  int add = 0, skip = 0, file_name_id = 0, inz, line_number = 0, command = 0, global_command = 0, inside_macro = 0, inside_repeat = 0;
+  int x, y, dstruct_start = -1, bits_current = 0, base = 0, bank = 0, origin = 0, origin_old = 0, slot = 0, running_id = 0;
+  int real_line_number = 0, err, base_backup = -1;
   struct section_def *section = NULL;
-  FILE *file_in;
   char c;
 
-
-  if ((file_in = fopen(tmp_name, "rb")) == NULL) {
-    fprintf(stderr, "LISTFILE_COLLECT: Error opening file \"%s\".\n", tmp_name);
+  /* rewind to the beginning of the internal data stream */
+  fseek(g_file_out_ptr, 0, SEEK_SET);
+  
+  /* allocate the global listfile data */
+  g_global_listfile_ints = calloc(sizeof(int) * g_global_listfile_items * 8, 1);
+  g_global_listfile_cmds = calloc(g_global_listfile_items, 1);
+  if (g_global_listfile_ints == NULL || g_global_listfile_cmds == NULL) {
+    print_text(NO, "LISTFILE_COLLECT: Out of memory error.\n");
     return FAILED;
   }
 
-  while (fread(&c, 1, 1, file_in) != 0) {
+  while (fread(&c, 1, 1, g_file_out_ptr) != 0) {
     switch (c) {
 
     case 'j':
       inside_repeat++;
+      /* HACK! */
+      line_number += 2;
       continue;
     case 'J':
       inside_repeat--;
       continue;
 
     case 'i':
-      fscanf(file_in, "%*s ");
+      err = fscanf(g_file_out_ptr, "%*d %*s ");
+      if (err < 0)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+
       inside_macro++;
+      /* HACK! */
+      line_number--;
       continue;
     case 'I':
-      fscanf(file_in, "%*s ");
+      err = fscanf(g_file_out_ptr, "%*d %*s ");
+      if (err < 0)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+
       inside_macro--;
       continue;
 
@@ -59,167 +85,487 @@ int listfile_collect(void) {
     case 'p':
       continue;
 
+    case '~':
+      err = fscanf(g_file_out_ptr, "%*d ");
+      if (err < 0)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+      continue;
+
     case 'g':
-      fscanf(file_in, "%*s ");
+      err = fscanf(g_file_out_ptr, "%*s ");
+      if (err < 0)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
       continue;
     case 'G':
       continue;
 
     case 'A':
     case 'S':
-      if (c == 'A')
-	fscanf(file_in, "%d %*d", &inz);
-      else
-	fscanf(file_in, "%d ", &inz);
+      if (c == 'A') {
+        err = fscanf(g_file_out_ptr, "%d %*d ", &inz);
+        if (err < 1)
+          return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+      }
+      else {
+        err = fscanf(g_file_out_ptr, "%d ", &inz);
+        if (err < 1)
+          return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+      }
 
-      section = sections_first;
+      origin_old = origin;
+      
+      section = g_sections_first;
       while (section->id != inz)
-	section = section->next;
+        section = section->next;
 
+      base_backup = base;
+      if (section->base >= 0)
+        base = section->base;
+      
       add = 0;
       skip = 0;
       command = 0;
 
       /* allocate the listfile data */
-      section->listfile_ints = calloc(sizeof(int) * section->listfile_items * 3, 1);
+      section->listfile_ints = calloc(sizeof(int) * section->listfile_items * 5, 1);
       section->listfile_cmds = calloc(section->listfile_items, 1);
       if (section->listfile_ints == NULL || section->listfile_cmds == NULL) {
-	fprintf(stderr, "LISTFILE_COLLECT: Out of memory error.\n");
-	return FAILED;
+        print_text(NO, "LISTFILE_COLLECT: Out of memory error.\n");
+        return FAILED;
       }
 
       /* add file name */
       section->listfile_cmds[command] = 'f';
-      section->listfile_ints[command*3 + 0] = file_name_id;
+      section->listfile_ints[command*5 + 0] = file_name_id;
       command++;
 
       continue;
 
     case 's':
+      if (section != NULL && section->advance_org == NO)
+        origin = origin_old;
       section = NULL;
+      add = 0;
+      skip = 0;
+
+      if (base_backup >= 0) {
+        base = base_backup;
+        base_backup = -1;
+      }
+      
       continue;
 
     case 'x':
     case 'o':
-      fscanf(file_in, "%d %*d ", &inz);
+      err = fscanf(g_file_out_ptr, "%d %*d ", &inz);
+      if (err < 1)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+      
       add += inz;
+      origin += inz;
       continue;
 
     case 'X':
-      fscanf(file_in, "%d %*d ", &inz);
-      add += inz << 1;
+      err = fscanf(g_file_out_ptr, "%d %*d ", &inz);
+      if (err < 1)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+
+      add += inz * 2;
+      origin += inz * 2;
       continue;
 
-#ifdef W65816
+    case 'h':
+      err = fscanf(g_file_out_ptr, "%d %*d ", &inz);
+      if (err < 1)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+
+      add += inz * 3;
+      origin += inz * 3;
+      continue;
+
+    case 'w':
+      err = fscanf(g_file_out_ptr, "%d %*d ", &inz);
+      if (err < 1)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+
+      add += inz * 4;
+      origin += inz * 4;
+      continue;
+
     case 'z':
     case 'q':
-      fscanf(file_in, "%*s ");
+      err = fscanf(g_file_out_ptr, "%*s ");
+      if (err < 0)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+
       add += 3;
+      origin += 3;
       continue;
 
     case 'T':
-      fscanf(file_in, "%*d ");
+      err = fscanf(g_file_out_ptr, "%*d ");
+      if (err < 0)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+
       add += 3;
+      origin += 3;
       continue;
-#endif
+
+    case 'u':
+    case 'V':
+      err = fscanf(g_file_out_ptr, "%*s ");
+      if (err < 0)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+      
+      add += 4;
+      origin += 4;
+      continue;
+
+    case 'U':
+      err = fscanf(g_file_out_ptr, "%*d ");
+      if (err < 0)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+
+      add += 4;
+      origin += 4;
+      continue;
 
     case 'b':
-      fscanf(file_in, "%*d ");
+      err = fscanf(g_file_out_ptr, "%d ", &base);
+      if (err < 1)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
       continue;
 
     case 'v':
-      fscanf(file_in, "%*d ");
+      err = fscanf(g_file_out_ptr, "%*d ");
+      if (err < 0)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
       continue;
 
     case 'R':
     case 'Q':
-    case 'd':
-    case 'c':
-      fscanf(file_in, "%*s ");
+      err = fscanf(g_file_out_ptr, "%*s ");
+      if (err < 0)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+
       add++;
+      origin++;
       continue;
 
-#ifdef W65816
-    case 'M':
-#endif
-    case 'r':
-      fscanf(file_in, "%*s ");
+    case 'W':
+      err = fscanf(g_file_out_ptr, "%*d %*s ");
+      if (err < 0)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+
+      add++;
+      origin++;
+      continue;
+
+    case 'K':
+      err = fscanf(g_file_out_ptr, "%*d %*s ");
+      if (err < 0)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+
       add += 2;
+      origin += 2;
+      continue;
+
+    case 'H':
+      err = fscanf(g_file_out_ptr, "%*d %*d ");
+      if (err < 0)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+
+      add += 2;
+      origin += 2;
+      continue;
+
+    case 'a':
+      err = fscanf(g_file_out_ptr, "%*d ");
+      if (err < 0)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+
+      add++;
+      origin++;
+      continue;
+
+    case 'd':
+    case 'c':
+      err = fscanf(g_file_out_ptr, "%*d ");
+      if (err < 0)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+
+      add++;
+      origin++;
+      continue;
+
+    case '*':
+      err = fscanf(g_file_out_ptr, "%*s ");
+      if (err < 0)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+
+      add++;
+      origin++;
+      continue;
+
+    case '-':
+      err = fscanf(g_file_out_ptr, "%*d ");
+      if (err < 0)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+      
+      add++;
+      origin++;
+      continue;
+
+    case '.':
+      continue;
+
+    case '?':
+    case 'M':
+    case 'r':
+      err = fscanf(g_file_out_ptr, "%*s ");
+      if (err < 0)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+
+      add += 2;
+      origin += 2;
       continue;
 
     case 'y':
     case 'C':
-      fscanf(file_in, "%*d ");
+    case '!':
+      err = fscanf(g_file_out_ptr, "%*d ");
+      if (err < 0)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+
       add += 2;
+      origin += 2;
+      continue;
+
+    case '+':
+      {
+        int bits_to_add;
+        char type;
+          
+        err = fscanf(g_file_out_ptr, "%d ", &bits_to_add);
+        if (err < 1)
+          return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+      
+        if (bits_to_add == 999) {
+          bits_current = 0;
+
+          continue;
+        }
+        else {
+          if (bits_current == 0) {
+            add++;
+            origin++;
+          }
+          bits_current += bits_to_add;
+          while (bits_current > 8) {
+            bits_current -= 8;
+            add++;
+            origin++;
+          }
+          if (bits_to_add == 8)
+            bits_current = 0;
+        }
+
+        err = fscanf(g_file_out_ptr, "%c", &type);
+        if (err < 1)
+          return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+      
+        if (type == 'a') {
+          err = fscanf(g_file_out_ptr, "%*d");
+          if (err < 0)
+            return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+        }
+        else if (type == 'b') {
+          err = fscanf(g_file_out_ptr, "%*s");
+          if (err < 0)
+            return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+        }
+        else if (type == 'c') {
+          err = fscanf(g_file_out_ptr, "%*d");
+          if (err < 0)
+            return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+        }
+        else {
+          print_text(NO, "%s: LISTFILE_COLLECT: Unknown internal .BITS data type \"%c\". Please submit a bug report!\n", get_file_name(file_name_id), type);
+          return FAILED;
+        }
+
+        continue;
+      }
+      
+    case 'n':
+      err = fscanf(g_file_out_ptr, "%*d %*s ");
+      if (err < 0)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+
+      add += 2;
+      origin += 2;
+      continue;
+
+    case 'N':
+      err = fscanf(g_file_out_ptr, "%*d %*d ");
+      if (err < 0)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+
+      add += 2;
+      origin += 2;
+      continue;
+
+    case 'l':
+      err = fscanf(g_file_out_ptr, "%*s ");
+      if (err < 0)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+
+      add++;
+      origin++;
+      continue;
+
+    case 'm':
+      err = fscanf(g_file_out_ptr, "%*d %*s ");
+      if (err < 0)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+
+      add += 2;
+      origin += 2;
+      continue;
+
+    case '@':
+      err = fscanf(g_file_out_ptr, "%*d %*s ");
+      if (err < 0)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+
+      add++;
+      origin++;
       continue;
 
     case 'D':
-      fscanf(file_in, "%*d %*d %*d %d ", &inz);
+      err = fscanf(g_file_out_ptr, "%*d %*d %*d %d ", &inz);
+      if (err < 1)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+
       add += inz;
+      origin += inz;
       continue;
 
     case 'O':
-      fscanf(file_in, "%*d ");
+      err = fscanf(g_file_out_ptr, "%d ", &origin);
+      if (err < 1)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
       continue;
 
     case 'B':
-      fscanf(file_in, "%*d %*d ");
+      err = fscanf(g_file_out_ptr, "%d %d ", &bank, &slot);
+      if (err < 2)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
       continue;
 
     case 'Z':
       continue;
 
     case 't':
-      fscanf(file_in, "%*s ");
+      err = fscanf(g_file_out_ptr, "%*s ");
+      if (err < 0)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
       continue;
       
     case 'Y':
     case 'L':
-      fscanf(file_in, "%*s ");
+      err = fscanf(g_file_out_ptr, "%*s ");
+      if (err < 0)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
       continue;
 
     case 'f':
-      fscanf(file_in, "%d ", &file_name_id);
-
+      err = fscanf(g_file_out_ptr, "%d ", &file_name_id);
+      if (err < 1)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+      
       if (section != NULL) {
-	/* terminate the previous line */
-	section->listfile_ints[command*3 + 1] = add;
-	add = 0;
-	skip = 0;
+        /* terminate the previous line */
+        section->listfile_ints[command*5 + 1] = add;
+        add = 0;
+        skip = 0;
 
-	/* add file name */
-	section->listfile_cmds[command] = 'f';
-	section->listfile_ints[command*3 + 0] = file_name_id;
-	command++;
+        /* add file name */
+        section->listfile_cmds[command] = 'f';
+        section->listfile_ints[command*5 + 0] = file_name_id;
+        command++;
+        running_id++;
+      }
+      else {
+        /* terminate the previous line */
+        g_global_listfile_ints[global_command*8 + 1] = add;
+        add = 0;
+        skip = 0;
+
+        /* add file name */
+        g_global_listfile_cmds[global_command] = 'f';
+        g_global_listfile_ints[global_command*8 + 0] = file_name_id;
+        global_command++;
+        running_id++;
       }
       continue;
 
     case 'k':
-      fscanf(file_in, "%d ", &line_number);
-
+      /* all listfile data produced by .MACROs are put where they are called from */
       if (inside_macro > 0 || inside_repeat > 0) {
-	skip += add;
-	add = 0;
-	continue;
+        err = fscanf(g_file_out_ptr, "%d ", &real_line_number);
+        if (err < 1)
+          return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
       }
-
+      else {
+        err = fscanf(g_file_out_ptr, "%d ", &line_number);
+        if (err < 1)
+          return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+        real_line_number = line_number;
+      }
+      
       if (section != NULL) {
-	/* terminate the previous line */
-	section->listfile_ints[command*3 + 1] = add;
-	section->listfile_ints[command*3 + 2] = skip;
+        /* terminate the previous line */
+        section->listfile_ints[command*5 + 1] = add;
+        section->listfile_ints[command*5 + 2] = skip;
+        section->listfile_ints[command*5 + 3] = running_id;
 
-	add = 0;
-	skip = 0;
+        add = 0;
+        skip = 0;
 
-	/* add line number */
-	section->listfile_cmds[command] = 'k';
-	section->listfile_ints[command*3 + 0] = line_number;
-	command++;
+        /* add line number - NOTE: this 'k' terminates the list file item on the previous line, thus -1 */
+        section->listfile_cmds[command] = 'k';
+        section->listfile_ints[command*5 + 0] = line_number-1;
+        section->listfile_ints[command*5 + 4] = real_line_number-1;
+        command++;
+        running_id++;
+      }
+      else {
+        /* terminate the previous line */
+        g_global_listfile_ints[global_command*8 + 1] = add;
+        g_global_listfile_ints[global_command*8 + 2] = origin-add;
+        g_global_listfile_ints[global_command*8 + 3] = base;
+        g_global_listfile_ints[global_command*8 + 4] = bank;
+        g_global_listfile_ints[global_command*8 + 5] = slot;
+        g_global_listfile_ints[global_command*8 + 6] = running_id;
+        
+        add = 0;
+        skip = 0;
+
+        /* add line number - NOTE: this 'k' terminates the list file item on the previous line, thus -1 */
+        g_global_listfile_cmds[global_command] = 'k';
+        g_global_listfile_ints[global_command*8 + 0] = line_number-1;
+        g_global_listfile_ints[global_command*8 + 7] = real_line_number-1;
+        global_command++;
+        running_id++;
       }
       continue;
 
     case 'e':
-      fscanf(file_in, "%d %d ", &x, &y);
+      err = fscanf(g_file_out_ptr, "%d %d ", &x, &y);
+      if (err < 2)
+        return _print_fscanf_error_accessing_internal_data_stream(file_name_id, line_number);
+      
       if (y == -1) /* Mark start of .DSTRUCT */
         dstruct_start = add;
       else
@@ -227,13 +573,24 @@ int listfile_collect(void) {
       continue;
 
     default:
-      fprintf(stderr, "%s: LISTFILE_COLLECT: Unknown internal symbol \"%c\".\n", get_file_name(file_name_id), c);
+      print_text(NO, "%s: LISTFILE_COLLECT: Unknown internal symbol \"%c\".\n", get_file_name(file_name_id), c);
       return FAILED;
     }
   }
 
-  fclose(file_in);
-
+  /* sanity check */
+  if (g_global_listfile_items != global_command) {
+    print_text(NO, "LISTFILE_COLLECT: Global final listfile item count %d doesn't match the anticipated count %d.\n", global_command, g_global_listfile_items);
+    if (global_command < g_global_listfile_items) {
+      print_text(NO, "LISTFILE_COLLECT: In this case it's not a problem, the buffer was large enough. But please submit a bug report!\n");
+      g_global_listfile_items = global_command;
+    }
+    else {
+      print_text(NO, "LISTFILE_COLLECT: We ran out of buffer, cannot continue. Please submit a bug report!\n");
+      return FAILED;
+    }
+  }
+  
   return SUCCEEDED;
 }
 
@@ -245,10 +602,18 @@ int listfile_block_write(FILE *file_out, struct section_def *section) {
 
   int i, d;
 
-
   if (file_out == NULL || section == NULL)
     return FAILED;
 
+  /* RAM sections don't write out listfile data */
+  if (section->status == SECTION_STATUS_RAM_FREE ||
+      section->status == SECTION_STATUS_RAM_FORCE ||
+      section->status == SECTION_STATUS_RAM_SEMIFREE ||
+      section->status == SECTION_STATUS_RAM_SEMISUBFREE) {
+    fprintf(file_out, "%c", 0);
+    return SUCCEEDED;
+  }
+  
   fprintf(file_out, "%c", 1);
 
   d = section->listfile_items;
@@ -258,20 +623,70 @@ int listfile_block_write(FILE *file_out, struct section_def *section) {
     fprintf(file_out, "%c", section->listfile_cmds[i]);
     if (section->listfile_cmds[i] == 'k') {
       /* next line: line number, line length, skip bytes */
-      d = section->listfile_ints[i*3 + 0];
+      d = section->listfile_ints[i*5 + 0];
       WRITEOUT_D;
-      d = section->listfile_ints[i*3 + 1];
+      d = section->listfile_ints[i*5 + 1];
       WRITEOUT_D;
-      d = section->listfile_ints[i*3 + 2];
+      d = section->listfile_ints[i*5 + 2];
+      WRITEOUT_D;
+      d = section->listfile_ints[i*5 + 3];
+      WRITEOUT_D;
+      d = section->listfile_ints[i*5 + 4];
       WRITEOUT_D;
     }
     else if (section->listfile_cmds[i] == 'f') {
       /* next file: file name id */
-      d = section->listfile_ints[i*3 + 0];
+      d = section->listfile_ints[i*5 + 0];
       WRITEOUT_D;
     }
     else {
-      fprintf(stderr, "LISTFILE_BLOCK_WRITE: Unknown command '%c'. Internal error. Only known commands are 'k' and 'f'.\n", section->listfile_cmds[i]);
+      print_text(NO, "LISTFILE_BLOCK_WRITE: Unknown command '%c'. Internal error. Only known commands are 'k' and 'f'.\n", section->listfile_cmds[i]);
+      return FAILED;
+    }
+  }
+
+  return SUCCEEDED;
+}
+
+
+int listfile_globals_write(FILE *file_out) {
+
+  int i, d;
+
+  if (file_out == NULL)
+    return FAILED;
+
+  d = g_global_listfile_items;
+  WRITEOUT_D;
+
+  for (i = 0; i < g_global_listfile_items; i++) {
+    fprintf(file_out, "%c", g_global_listfile_cmds[i]);
+    if (g_global_listfile_cmds[i] == 'k') {
+      /* next line: line number, line length, offset, base, bank, slot */
+      d = g_global_listfile_ints[i*8 + 0];
+      WRITEOUT_D;
+      d = g_global_listfile_ints[i*8 + 1];
+      WRITEOUT_D;
+      d = g_global_listfile_ints[i*8 + 2];
+      WRITEOUT_D;
+      d = g_global_listfile_ints[i*8 + 3];
+      WRITEOUT_D;
+      d = g_global_listfile_ints[i*8 + 4];
+      WRITEOUT_D;
+      d = g_global_listfile_ints[i*8 + 5];
+      WRITEOUT_D;
+      d = g_global_listfile_ints[i*8 + 6];
+      WRITEOUT_D;
+      d = g_global_listfile_ints[i*8 + 7];
+      WRITEOUT_D;
+    }
+    else if (g_global_listfile_cmds[i] == 'f') {
+      /* next file: file name id */
+      d = g_global_listfile_ints[i*8 + 0];
+      WRITEOUT_D;
+    }
+    else {
+      print_text(NO, "LISTFILE_GLOBALS_WRITE: Unknown command '%c'. Internal error. Only known commands are 'k' and 'f'.\n", g_global_listfile_cmds[i]);
       return FAILED;
     }
   }

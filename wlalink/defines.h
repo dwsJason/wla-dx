@@ -10,13 +10,18 @@
 #ifndef _DEFINES_H
 #define _DEFINES_H
 
-#define OBJ_FORMAT_INFO  0
-#define OBJ_EMPTY_FILL   4
-#define OBJ_MISC_BITS    5
-#define OBJ_MORE_BITS    6
-#define OBJ_EXTR_BITS    7
-#define OBJ_ROMBANKS     8
-#define OBJ_ROMBANKMAP  12
+#define SECTION_TYPES_COUNT    9
+#define RAMSECTION_TYPES_COUNT 4
+#define SECTION_TYPES_COUNT_ALL (SECTION_TYPES_COUNT + RAMSECTION_TYPES_COUNT)
+
+#define OBJ_FORMAT_INFO        0
+#define OBJ_EMPTY_FILL         4
+#define OBJ_MISC_BITS          5
+#define OBJ_MORE_BITS          6
+#define OBJ_EXTR_BITS          7
+#define OBJ_SMS_CHECKSUM_SIZE  8
+#define OBJ_ROMBANKS          16
+#define OBJ_ROMBANKMAP        20
 
 #define LIB_FORMAT_INFO       0
 #define LIB_MISC_BITS         4
@@ -27,6 +32,25 @@
 
 #define OUTPUT_TYPE_UNDEFINED 0
 #define OUTPUT_TYPE_CBM_PRG   1
+#define OUTPUT_TYPE_C64_CRT   2
+
+#define C64_CRT_TYPE_UNDEFINED    0
+#define C64_CRT_TYPE_NORMAL_4K    1
+#define C64_CRT_TYPE_NORMAL_8K    2
+#define C64_CRT_TYPE_NORMAL_16K   3
+#define C64_CRT_TYPE_ULTIMAX_4K   4
+#define C64_CRT_TYPE_ULTIMAX_8K   5
+#define C64_CRT_TYPE_ULTIMAX_16K  6
+#define C64_CRT_TYPE_OCEAN        7
+#define C64_CRT_TYPE_MAGIC_DESK   8
+#define C64_CRT_TYPE_EASYFLASH    9
+#define C64_CRT_TYPE_SIMONS_BASIC 10
+#define C64_CRT_TYPE_EPYX_FASTLOAD 11
+#define C64_CRT_TYPE_C64_GS       12
+#define C64_CRT_TYPE_COMAL80      13
+#define C64_CRT_TYPE_GMOD2        14
+#define C64_CRT_TYPE_RGCD         15
+#define C64_CRT_TYPE_GMOD3        16
 
 #define LOAD_ADDRESS_TYPE_UNDEFINED 0
 #define LOAD_ADDRESS_TYPE_VALUE     1
@@ -46,6 +70,9 @@
 #define DATA_TYPE_BLOCK   0
 #define DATA_TYPE_SECTION 1
 
+#define STRING_TYPE_LABEL  0
+#define STRING_TYPE_STRING 1
+
 #define STATE_NONE        0
 #define STATE_OBJECT      1
 #define STATE_LIBRARY     2
@@ -54,10 +81,32 @@
 #define STATE_DEFINITION  5
 #define STATE_RAMSECTIONS 6
 #define STATE_SECTIONS    7
+#define STATE_SECTION_WRITE_ORDER    8
+#define STATE_RAMSECTION_WRITE_ORDER 9
 
-#define SYMBOL_MODE_NONE   0
-#define SYMBOL_MODE_NOCA5H 1
-#define SYMBOL_MODE_WLA    2
+#define SYMBOL_MODE_NONE    0
+#define SYMBOL_MODE_NOCA5H  1
+#define SYMBOL_MODE_WLA     2
+#define SYMBOL_MODE_EQU     3
+#define SYMBOL_MODE_MAME    4
+
+#define LISTFILE_OUTPUT_SOURCE 0
+#define LISTFILE_OUTPUT_OBJECT 1
+
+struct listfile_output_name {
+  int mode;
+  char *sourcefilename;
+  char *outputfilename;
+  struct object_file *owner;
+};
+
+struct listfile_source_context {
+  char *sourcefilename;
+  char *source_file;
+  int file_size;
+  int current_linenumber;
+  int m;
+};
 
 struct source_file_name {
   char *name;
@@ -84,16 +133,38 @@ struct object_file {
   int little_endian;
   int cpu_65816;
   int cpu_65ce02;
+  int cpu_sh2;
   int id;
   int fix_slot;
+  int listfile_items;
+  int *listfile_ints;
+  char *listfile_cmds;
   struct source_file_name *source_file_names_list;
+  struct stack **stacks;
+  int stacks_max;
+  int stacks_array_max;
   struct object_file *next;
 };
 
-struct append_section {
+struct after_section {
+  int section_id;
+  int file_id;
   char section[MAX_NAME_LENGTH + 1];
-  char append_to[MAX_NAME_LENGTH + 1];
-  struct append_section *next;
+  char after[MAX_NAME_LENGTH + 1];
+  char is_appendto;
+  char alive;
+  char inserted;
+  struct section *section_s;
+  struct section *after_s;
+  struct after_section *next;
+};
+
+struct sort_capsule {
+  char alive;
+  struct section *section;
+  struct after_section *after_section;
+  struct sort_capsule *next, *prev;
+  struct sort_capsule *children;
 };
 
 #define LABEL_STATUS_LABEL      0
@@ -101,13 +172,15 @@ struct append_section {
 #define LABEL_STATUS_STACK      2
 #define LABEL_STATUS_SYMBOL     3
 #define LABEL_STATUS_BREAKPOINT 4
+#define LABEL_STATUS_STRING     5
 
 struct label {
   char name[MAX_NAME_LENGTH + 1];
+  char context[MAX_NAME_LENGTH + 1];
+  char string[MAX_NAME_LENGTH + 1];
   int file_id;
   int file_id_source;
   int linenumber;
-  int rom_address;
   int address_in_section;
   int section;
   int section_status;
@@ -117,6 +190,7 @@ struct label {
   int status;
   int alive;
   double address;
+  double rom_address;
   struct section *section_struct;
   struct label *next;
   struct label *prev;
@@ -124,6 +198,7 @@ struct label {
 
 struct reference {
   char name[MAX_NAME_LENGTH + 1];
+  char context[MAX_NAME_LENGTH + 1];
   int  address;
   int  type;
   int  section;
@@ -135,18 +210,24 @@ struct reference {
   int  file_id_source;
   int  linenumber;
   int  special_id;
+  int  bits_position;
+  int  bits_to_define;
   struct reference *next;
   struct reference *prev;
 };
 
 struct section {
   char name[MAX_NAME_LENGTH + 1];
+  char banks[MAX_NAME_LENGTH + 1];
   int  file_id;
   int  file_id_source;
   int  priority;
   int  address;
   int  output_address;
   int  status;
+  int  bitwindow;
+  int  window_start;
+  int  window_end;
   int  keep;
   int  bank;
   int  slot;
@@ -158,22 +239,30 @@ struct section {
   int  i;
   int  referenced;
   int  alive;
+  int  appended_to;
   int  alignment;
   int  offset;
+  int  appended_to_offset;
   int  listfile_items;
   int  *listfile_ints;
+  char marked;
+  char placed;
+  char is_bankheader_section;
   char *listfile_cmds;
   unsigned char *data;
   struct namespace_def *nspace;
   struct map_t *label_map;
+  struct section *after;
   struct section *next;
   struct section *prev;
+  struct section *appended_to_section;
 };
 
 struct section_fix {
   char name[MAX_NAME_LENGTH + 1];
   char file_name[MAX_NAME_LENGTH + 1];
   char slot_name[MAX_NAME_LENGTH + 1];
+  char banks[MAX_NAME_LENGTH + 1];
   int  line_number;
   int  keep;
   int  bank;
@@ -185,7 +274,11 @@ struct section_fix {
   int  offset;
   int  priority;
   int  priority_defined;
+  int  size;
   int  is_ramsection;
+  int  bitwindow;
+  int  window_start;
+  int  window_end;
   struct section_fix *next;
 };
 
@@ -197,17 +290,18 @@ struct slot {
 };
 
 struct stack {
-  struct stack_item *stack;
+  struct stack_item *stack_items;
   struct stack *next;
   struct stack *prev;
   int id;
   int relative_references;
   int under_work;
   int computed;
-  int result_ram;
-  int result_rom;
+  double result_ram;
+  double result_rom;
   int result_slot;
   int result_base;
+  int result_bank;
   int position;
   int file_id;
   int file_id_source;
@@ -222,6 +316,17 @@ struct stack {
   int address;
   int memory_address;
   int special_id;
+  int bits_position;
+  int bits_to_define;
+  int is_assertion_body;
+  int assertion_address_adjusted;
+};
+
+struct assertion {
+  struct assertion *next;
+  struct stack *stack;
+  int action;
+  char message[MAX_NAME_LENGTH + 1];
 };
 
 struct stack_item {
@@ -229,9 +334,17 @@ struct stack_item {
   int sign;
   int slot;
   int base;
+  int bank;
+  int stack_file_id;
   double value_ram;
   double value_rom;
   char string[MAX_NAME_LENGTH + 1];
+};
+
+struct pointer_array {
+  void **ptr;
+  int  max;
+  int  array_max;
 };
 
 #endif /* _DEFINES_H */

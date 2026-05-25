@@ -24,9 +24,11 @@ to link together. Here's the format:
         [header]
         [footer]
         [definitions]
-	[ramsections]
-	[sections]
-
+        [ramsections]
+        [sections]
+        [sectionwriteorder]
+        [ramsectionwriteorder]
+        
 2. Start to list the file names. ::
     
         [objects]
@@ -67,16 +69,18 @@ to link together. Here's the format:
 
         [ramsections]
         bank 0 slot 3 org $0 "library 1 vars 1"
-	bank 0 slot 3 orga $6100 priority 100 force "library 1 vars 2"
-	bank 0 slot 3 appendto "library 1 vars 2" "library 1 vars 3"
+        bank 0 slot 3 orga $6100 priority 100 force "library 1 vars 2"
+        bank 0 slot 3 appendto "library 1 vars 2" "library 1 vars 3"
 
 6. If you want to relocate normal sections, do as follows (ORG, ORGA,
-   KEEP, PRIORITY and APPENDTO are optional, but useful)::
+   KEEP, AFTER, OFFSET, PRIORITY, WINDOW, BITWINDOW and APPENDTO are
+   optional, but useful)::
 
         [sections]
-	bank 0 slot 1 org $100 appendto "MusicPlayers" "MusicPlayer1"
-	bank 0 slot 1 orga $2200 semisubfree priority 100 keep "EnemyAI"
-     
+        bank 0 slot 1 org $100 appendto "MusicPlayers" "MusicPlayer1"
+        bank 0 slot 1 orga $2200 semisubfree priority 100 keep bitwindow 8 "EnemyAI"
+        bank 0 slot 2 after "Enemies" offset 256 "Dragon"
+   
 7. If you want to make value definitions, here's your chance::
    
         [definitions]
@@ -85,8 +89,33 @@ to link together. Here's the format:
         start $150
         ...
 
+8. If you want to change the order in which the linker writes the sections to output::
+
+        [sectionwriteorder]
+        OVERWRITE
+        FORCE
+        FREE
+        SEMISUPERFREE
+        SEMISUBFREE
+        SEMIFREE
+        SUPERFREE
+
+9. If you want to change the order in which the linker writes the RAM sections to output::
+
+        [ramsectionwriteorder]
+        FREE
+        FORCE
+        SEMISUBFREE
+        SEMIFREE
+        
+Note that you have to specify all the section types here.
+        
 If flag ``v`` is used, WLALINK displays information about ROM file after a
 succesful linking.
+
+If flag ``R`` is used the file paths inside the link file are relative
+to the directory where the link file is, not relative to current working
+directory.
 
 If flag ``nS`` is used, WLALINK doesn't sort the sections at all, so they
 are placed in the output in their order of appearance.
@@ -96,18 +125,51 @@ useful when you work under MSDOS (NO$GMB is a very good Game Boy emulator for
 MSDOS/Windows) as it contains information about the labels in your project.
 
 If flag ``S`` is used, WLALINK will create a WLA symbol file, that is much
-like NO$GMB symbol file, but shows also symbols and breakpoints, not just labels
-and definitions.
+like NO$GMB symbol file, but shows also symbols, defines, and breakpoints, not
+just labels.
+
+If flag ``E`` is used with a comma- or space-separated list, WLALINK will write
+debug export files for emulators and tools. Supported formats are ``VICE``,
+``RGBDS`` (also ``BGB`` and ``SAMEBOY``), ``MESEN``, ``EMULICIOUS``, ``CSPECT``,
+``NOCASH``, ``MAME`` and ``JSON``. The ``MAME`` format writes a MAME debugger
+command file that can be loaded with MAME's ``source`` debugger command.
+
+If flag ``sM`` is used, WLALINK will produce a MAME-compatible flat symbol
+file. Each line has the form ``AABBCCDD name``, where ``AABBCCDD`` is the
+full CPU-visible hexadecimal address of the label. This format is suitable
+for ingestion by MAME debugger scripts and generic disassembler symbol
+importers (Ghidra/IDA/etc.).
 
 If flag ``d`` is used, WLALINK discards all unreferenced ``FREE``, ``SEMIFREE``,
 ``SEMISUBFREE``, ``SUPERFREE`` and ``RAM`` sections. This way you can link big
 libraries to your project and WLALINK will choose only the used sections, so you
 won't be linking any dead code/data.
 
+If flag ``D`` is used, WLALINK doesn't create any _sizeof_* labels. Note that
+to disable fully _sizeof_* label creation, you'll also need to give WLA the
+``s`` flag.
+
+If flag ``pS`` is used then WLALINK doesn't use section type in writing the
+``.SECTION`` s, but instead uses just the ``PRIORITY`` (and size) when it
+writes the ``.SECTION`` s to output.
+
+Flag ``pR`` works the same as ``pS`` but for ``.RAMSECTION`` s.
+
 If flag ``t`` is used with ``c64PRG``, WLALINK will add a two byte header to the
 program file (use with flag ``b``). The header contains the load address for
 the PRG. Use the flag ``a`` to specify the load address. It can be a value or
 the name of a label.
+
+If flag ``t`` is used with ``C64CRT``, WLALINK will write a Commodore 64 CRT
+cartridge image. Use flag ``-64`` to specify the cartridge type.
+
+If flag ``O`` is used with ``BIN``, ``SMD`` or ``MD``, WLALINK selects the Mega
+Drive/Genesis ROM output file format. ``BIN`` is normal raw output and is also
+the default when ``-O`` is omitted, ``SMD`` writes a 512-byte Super Magic Drive
+header and per-16KB even/odd interleaving, and ``MD`` writes all even bytes
+followed by all odd bytes for the whole ROM image. ``SMD`` output requires the
+ROM size to be a multiple of 16KB and is currently limited to 255 16KB blocks
+(4080KB) for single-file SMD images; ``MD`` output requires an even ROM size.
 
 If flag ``i`` is given, WLALINK will write list files. Note that you must
 compile the object and library files with ``-i`` flag as well. Otherwise
@@ -119,6 +181,10 @@ contains the source text and the result data the source compiled into. List
 files are good for debugging. NOTE: list file data can currently be generated
 only for code inside sections. ``.MACRO`` calls and ``.REPT`` s don't produce
 list file data either.
+
+If flag ``-g`` is given, WLALINK also writes list files, but writes one combined
+list file per object file next to that object file, switching into and out of
+included files as the source is assembled. This flag implies ``-i``.
 
 If flag ``L`` is given after the above options, WLALINK will use the
 directory specified after the flag for including libraries. If WLALINK
@@ -135,39 +201,52 @@ following example::
     .BANK 0
     .ORG $150
     
-    	...
-    	LD	A, 1
-    	CALL	LOAD_LEVEL
-    	...
+        ...
+        LD      A, 1
+        CALL    LOAD_LEVEL
+        ...
     
     LOAD_LEVEL:
-    	LD	HL, $2000
-    	LD	(HL), A
-    	CALL	INIT_LEVEL
-    	RET
+        LD      HL, $2000
+        LD      (HL), A
+        CALL    INIT_LEVEL
+        RET
     
     .BANK 1
     .ORG 0
     
     INIT_LEVEL:
-    	...
-    	RET
+        ...
+        RET
     
     .BANK 2
     .ORG $0
     
     INIT_LEVEL:
-    	...
-    	RET
+        ...
+        RET
     ...
-
 
 Here duplicate ``INIT_LEVEL`` labels are accepted as they both point to the
 same memory address (in the program's point of view).
+
+Allow duplicate labels when they have the same values using ``C`` flag.
+
+If you want to allow for some reason duplicate labels (and definitions) when they
+have different values, use the ``c`` flag. The linker will in this case probably
+use those that it processed first.
+
+Note that when you use .RAMSECTIONs, WLALINK will generate labels
+RAM_USAGE_SLOT_[slot name/id]_BANK_[bank number]_START and
+RAM_USAGE_SLOT_[slot name/id]_BANK_[bank number]_END that contain the
+addresses of the first and last used byte in the RAM bank/slot. Note that
+this only uses .RAMSECTION information to calculate the addresses, not
+.ENUMs or anything else.
 
 Examples::
 
     [seravy@localhost tbp]# wlalink -r linkfile testa.sfc
     [seravy@localhost tbp]# wlalink -d -i -b linkfile testb.sfc
     [seravy@localhost tbp]# wlalink -v -S -L ../../lib linkfile testc.sfc
+    [seravy@localhost tbp]# wlalink -v -i -E mame,json linkfile testd.sfc
     [seravy@localhost tbp]# wlalink -v -b -s -t c64PRG -a LOAD_ADDRESS linkfile linked.prg

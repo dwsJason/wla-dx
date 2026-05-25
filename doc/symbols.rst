@@ -11,6 +11,26 @@ Extra information for address-to-line mapping can be provided by adding the foll
 
 Address-to-line mappings includes information to relate lines in the source files to individual instructions in the generated ROM. This can be used to provide richer disassembly in the emulator, or allow for rich debugging in an external IDE. 
 
+WLA Symbol Version History
+--------------------------
+
+If you are maintaining a WLA symbol file parser, please review this page when new versions of WLA DX are released, as the format might have changed.
+
+Version 1: https://github.com/vhelin/wla-dx/blob/v9.12/doc/symbols.rst
+
+* Base version, including sections [labels], [definitions], [breakpoints], [symbols], [source files], [rom checksum], [addr-to-line mapping]
+
+Version 2: https://github.com/vhelin/wla-dx/blob/v10.5/doc/symbols.rst
+
+* Added [information] section
+* Deprecated [source files] section, and replaced with [source files v2]
+* Deprecated [addr-to-line mapping] section definition, and replaced with [addr-to-line mapping v2]
+
+Version 3: https://github.com/vhelin/wla-dx/blob/master/doc/symbols.rst
+
+* Added [sections] and [ramsections] sections
+* Added "wlasymbol true" under [information] section
+  
 Information For Emulator Developers
 -----------------------------------
 
@@ -24,10 +44,15 @@ In order to properly support loading of WLA symbol files, it is recommended to f
 
 The following are the list of currently supported sections, what they mean, and how their data should be interpreted.
 
+[information]
+*************
+
+The only fields this section has currently are "version" (and then the version number) and "wlasymbol" (which is followed by "true"). [information], if present, must always occur before any other section or data, and its first line will always be the format version.
+
 [labels]
 ********
 
-This is a list of all Labels to sections of the ROM, such as subroutine locations, or data locations. Each line lists an address in hexadecimal (bank and offset) and a string associated with that address. This data could be used, for example, to identify what section a given target address is in, by searching for the label with the closest address less than the target address.
+This is a list of all labels to sections of the ROM, such as subroutine locations, or data locations. Each line lists an address in hexadecimal (bank and offset) and a string associated with that address. This data could be used, for example, to identify what section a given target address is in, by searching for the label with the closest address less than the target address.
 
 - Regex match: ``[0-9a-fA-F]{2}:[0-9a-fA-F]{4} .*``
 - Format specifier: ``%2x:%4x %s``
@@ -56,13 +81,13 @@ This is a list of hexadecimal ROM addresses where the ``.SYMBOL`` directive was 
 - Regex match: ``[0-9a-fA-F]{2}:[0-9a-fA-F]{4} .*``
 - Format specifier: ``%2x:%4x %s``
 
-[source files]
-**************
+[source files v2]
+*****************
 
-These are used to identify what files were used during the assembly process, especially to map generated assembly back to source file contents. Each line lists a hexadecimal file index, a hexadecimal CRC32 checksum of the file, and a file path relative to the generated ROM's root. This could be used to load in the contents of one of the input files when running the ROM and verifying the file is up-to-date by checking its CRC32 checksum against the one generated during assembly.
+These are used to identify what files were used during the assembly process, especially to map generated assembly back to source file contents. Each line lists a hexadecimal object file index, a hexadecimal source file index, a hexadecimal CRC32 checksum of the file, and a file path relative to the generated ROM's root. This could be used to load in the contents of one of the input files when running the ROM and verifying the file is up-to-date by checking its CRC32 checksum against the one generated during assembly.
 
-- Regex match: ``[0-9a-fA-F]{4} [0-9a-fA-F]{8} .*``
-- Format specifier: ``%4x %8x %s``
+- Regex match: ``[0-9a-fA-F]{4}:[0-9a-fA-F]{4} [0-9a-fA-F]{8} .*``
+- Format specifier: ``%4x:%4x %8x %s``
 
 [rom checksum]
 **************
@@ -72,10 +97,26 @@ This is just a single line identifying what the hexadecimal CRC32 checksum of th
 - Regex match:  ``[0-9a-fA-F]{8}``
 - Format specifier: ``%8x``
 
-[addr-to-line mapping]
-**********************
+[addr-to-line mapping v2]
+*************************
 
-This is a listing of hexadecimal ROM addresses (bank and offset) each mapped to a hexadecimal file index and hexadecimal line index. The file index refers back to the file indices specified in the ``source files`` section, so that the source file name can be discovered. This information can be used to, for example, display source file information in line with disassembled code, or to communicate with an external text editor the location of the current Program Counter by specifying a source file and line instead of some address in the binary ROM file. 
+This is a listing of hexadecimal ROM address, bank, ROM bank offset, memory address, each mapped to a hexadecimal object file index, a source file index and hexadecimal line index. The file indices refer back to the file indices specified in the ``source files`` section, so that the source file name can be discovered. This information can be used to, for example, display source file information in line with disassembled code, or to communicate with an external text editor the location of the current Program Counter by specifying a source file and line instead of some address in the binary ROM file. 
 
-- Regex match: ``[0-9a-fA-F]{2}:[0-9a-fA-F]{4} [0-9a-fA-F]{4}:[0-9a-fA-F]{8}``
-- Format specifier: ``%2x:%4x %4x:%8x``
+- Regex match: ``[0-9a-fA-F]{8} [0-9a-fA-F]{2}:[0-9a-fA-F]{4} [0-9a-fA-F]{4} [0-9a-fA-F]{4}:[0-9a-fA-F]{4}:[0-9a-fA-F]{8}``
+- Format specifier: ``%8x %2x:%4x %4x %4x:%4x:%8x``
+
+[sections]
+**********
+
+Each line specifies a ``.SECTION``: hexadecimal ROM address, bank, ROM bank offset, memory address, size and name. Use this information for example to locate ``.SECTION`` data in the output.
+
+- Regex match: ``[0-9a-fA-F]{8} [0-9a-fA-F]{2}:[0-9a-fA-F]{4} [0-9a-fA-F]{4} [0-9a-fA-F]{8} .*``
+- Format specifier: ``%.8x %.2x:%.4x %.4x %.8x %s``
+
+[ramsections]
+*************
+
+Each line specifies a ``.RAMSECTION``: hexadecimal bank, RAM bank offset, memory address, size and name. Use this information for example to see where a ``.RAMSECTION`` was placed.
+
+- Regex match: ``[0-9a-fA-F]{2}:[0-9a-fA-F]{4} [0-9a-fA-F]{4} [0-9a-fA-F]{8} .*``
+- Format specifier: ``%.2x:%.4x %.4x %.8x %s``

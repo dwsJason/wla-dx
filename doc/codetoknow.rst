@@ -1,8 +1,9 @@
 Things you should know about coding for...
 ==========================================
 
-Please check out the source code examples (in ``examples`` directory) for
-quick target system specific information.
+Please be aware that the source code files in there are mainly used to test that
+the compiler and linker work, they are not possibly good examples of how you should
+write code using WLA DX. 
 
 Z80
 ---
@@ -97,24 +98,8 @@ Opcodes that make relative label references::
     BBS*
 
 
-6510
-----
-
-Read the subsection :ref:`codesub6502` as the information applies also to 6510
-coding...
-
-Opcodes that make relative label references::
-
-    BCC
-    BCS
-    BEQ
-    BMI
-    BNE
-    BPL
-    BVC
-    BVS
-
-
+.. _codesub65816:
+    
 65816
 -----
 
@@ -133,15 +118,24 @@ WLA is able to deduce the accumulator/index mode to some extent from
 ``REP``/``SEP``-mnemonics and ``.ACCU`` and ``.INDEX``-directives, but just to
 be sure, terminate the operand with ``.B``, ``.W`` or ``.L``. ::
 
-    AND #10     ; can be two different things, depending on the size of the accu.
-    AND #10.B   ; forces 8-bit immediate value.
-    AND #10.W   ; forces 16-bit immediate value.
+    AND #10    ; can be two different things, depending on the size of the operand.
+    AND #10.B  ; forces 8-bit immediate value.
+    AND #10.W  ; forces 16-bit immediate value.
+
+    AND 10     ; can be three different things, depending on the size of the operand.
+    AND 10.B   ; forces 8-bit address.
+    AND 10.W   ; forces 16-bit address.
+    AND 10.L   ; forces 24-bit address.
 
 Or if you must, these work as well::
 
-    AND.B #10   ; the same as "AND #10.B".
-    AND.W #10   ; the same as "AND #10.W".
+    AND.B #10  ; the same as "AND #10.B".
+    AND.W #10  ; the same as "AND #10.W".
 
+    AND.B 10   ; the same as "AND 10.B".
+    AND.W 10   ; the same as "AND 10.W".
+    AND.L 10   ; the same as "AND 10.L".
+    
 Opcodes that make relative label references::
 
     BCC
@@ -159,6 +153,21 @@ Opcodes that make relative label references::
 Use ``.WDC`` to start parsing WDC standard assembly code. ``.NOWDC`` sets
 the parser to parse WLA syntax assembly code.
 
+``MVN`` and ``MVP`` work as follows::
+
+    MVN $xx, $yy
+    MVN $xxyy
+    MVP $xx, $yy
+    MVP $xxyy
+
+``xx`` is the source bank, ``yy`` is the target bank.
+
+
+MC68000
+-------
+
+In addition to operand hints ``.B``, ``.W`` and ``.L`` we also have ``.D`` (32-bit).
+
 
 HUC6280
 -------
@@ -166,6 +175,14 @@ HUC6280
 Read the subsection :ref:`codesub6502` as the information applies also to
 HUC6280 coding...
 
+As PC Engine's zero page starts at $2000 (imagine ``ZEROPAGE1`` label's
+address is $2001), operand hint ``.#b`` will be useful::
+
+    STA ZEROPAGE1.#B  ; $85 $01
+
+It takes the lowest 8 bits of ``ZEROPAGE1`` and hints the assembler's parser that
+the operand is 8 bits in size.
+    
 Opcodes that make relative label references::
 
     BCC
@@ -219,7 +236,7 @@ Note that WLA assumes that ROM offset is all the time 0. If you use
 something else as the offset, make sure to compute the jumps by hand as WLA
 cannot do that.
 
-Check out ``examples/gb-z80/include/pocket_voice.i`` for more information.
+Check out ``tests/gb-z80/include/pocket_voice.i`` for more information.
 
 
 GB-Z80

@@ -1,5 +1,10 @@
 
-void procedures_at_exit(void);
-int allocate_rom(void);
-int parse_flags(char **flags, int flagc);
-int parse_and_set_libdir(char *c, int contains_flag);
+#ifndef _MAIN_H
+#define _MAIN_H
+
+#include <stdarg.h>
+
+void print_text(int is_stdout, const char *format, ...);
+void print_text_using_args(int is_stdout, const char *format, va_list args);
+
+#endif
